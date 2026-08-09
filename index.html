@@ -525,17 +525,30 @@
       alert("Teams copied to clipboard!");
     }
 
-    function openQRModal() {
-      const modal = document.getElementById('qrModal');
-      const container = document.getElementById('qrcode');
-      container.innerHTML = '';
-      
-      const targetUrl = window.location.href.replace('index.html', 'submit.html') + (activePin ? `?pin=${activePin}` : '');
-      new QRCode(container, { text: targetUrl, width: 180, height: 180 });
-      
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    }
+  function openQRModal() {
+  const modal = document.getElementById('qrModal');
+  const container = document.getElementById('qrcode');
+  container.innerHTML = '';
+  
+  // Clean URL stripping query parameters or hash fragments
+  let baseUrl = window.location.href.split('?')[0].split('#')[0];
+  
+  // Robust path resolution for submit.html
+  if (baseUrl.endsWith('index.html')) {
+    baseUrl = baseUrl.replace(/index\.html$/, 'submit.html');
+  } else if (baseUrl.endsWith('/')) {
+    baseUrl += 'submit.html';
+  } else {
+    baseUrl += '/submit.html';
+  }
+
+  const targetUrl = baseUrl + (activePin ? `?pin=${activePin}` : '');
+  
+  new QRCode(container, { text: targetUrl, width: 180, height: 180 });
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+}
 
     function closeQRModal() {
       document.getElementById('qrModal').classList.add('hidden');
