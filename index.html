@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CARROT Spinner v3 - BISCAST SDS Dashboard</title>
+  <title>CARROT Spinner v3.2 - BISCAST SDS Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodegenerator@1.4.4/qrcode.min.js"></script>
@@ -35,7 +35,6 @@
       border-bottom: 3px solid var(--biscast-gold);
     }
 
-    /* Pointer Pin Indicator */
     .wheel-pointer {
       width: 0;
       height: 0;
@@ -48,24 +47,22 @@
 </head>
 <body class="min-h-screen flex flex-col">
 
-  <!-- Top Navigation Header -->
+  <!-- Header Banner -->
   <header class="glass-card px-6 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40">
     <div class="flex items-center space-x-3">
       <span class="text-3xl">🎰</span>
       <div>
         <h1 class="text-xl font-black tracking-wide text-amber-400">BISCAST SDS SPINNER</h1>
-        <p class="text-xs text-slate-400 font-medium">Student Development Services Dashboard</p>
+        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v2.2 (v3.2 Multi-Tenant)</p>
       </div>
     </div>
 
-    <!-- Session PIN Display -->
     <div class="flex items-center space-x-4">
       <div class="bg-slate-900/80 px-4 py-1.5 rounded-xl border border-amber-500/30 text-center">
         <span class="text-xs uppercase text-slate-400 font-bold block">Room PIN</span>
         <span id="roomPinDisplay" class="text-lg font-mono font-black text-amber-400">------</span>
       </div>
 
-      <!-- Tab Buttons -->
       <nav class="flex bg-slate-900 rounded-xl p-1 border border-slate-800">
         <button onclick="switchTab('stageTab')" id="btn-stageTab" class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-1">
           <span>🎯</span><span>Stage</span>
@@ -83,24 +80,20 @@
     </div>
   </header>
 
-  <!-- Main Workspace -->
+  <!-- Main Viewport -->
   <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
 
     <!-- TAB 1: WHEEL STAGE -->
     <section id="stageTab" class="tab-content block space-y-6">
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         
-        <!-- Left: Interactive Canvas Viewport -->
         <div class="lg:col-span-2 glass-card p-6 rounded-2xl flex flex-col items-center justify-center relative min-h-[500px]">
-          <!-- Wheel Pointer -->
           <div class="wheel-pointer absolute top-4 z-20"></div>
           
-          <!-- Canvas Frame -->
           <div class="relative w-full aspect-square max-w-[480px] flex items-center justify-center">
             <canvas id="wheelCanvas" class="w-full h-full rounded-full drop-shadow-2xl"></canvas>
           </div>
 
-          <!-- Stage Controls -->
           <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
             <button id="spinBtn" onclick="spinWheel()" 
                     class="px-8 py-4 rounded-xl bg-gradient-to-r from-red-800 to-amber-600 hover:from-red-700 hover:to-amber-500 text-white font-black text-xl shadow-xl transform active:scale-95 transition-all">
@@ -113,16 +106,13 @@
           </div>
         </div>
 
-        <!-- Right: QR Code & Winner History -->
         <div class="space-y-6">
-          <!-- QR Portal Overlay -->
           <div class="glass-card p-6 rounded-2xl text-center space-y-4">
             <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider">Audience Mobile Portal</h3>
             <div id="qrcode" class="flex justify-center bg-white p-3 rounded-xl mx-auto w-fit"></div>
-            <p class="text-xs text-slate-400">Scan QR to submit names directly to the wheel</p>
+            <p class="text-xs text-slate-400">Scan QR code to submit names directly to the wheel queue</p>
           </div>
 
-          <!-- Recent Winners Panel -->
           <div class="glass-card p-6 rounded-2xl space-y-3">
             <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between">
               <span>🏆 Draw History</span>
@@ -191,15 +181,19 @@
       <div class="glass-card p-6 rounded-2xl space-y-6">
         <div>
           <h2 class="text-lg font-bold text-amber-400">Breakout Team Partition Engine</h2>
-          <p class="text-xs text-slate-400">Randomly group current roster participants using Fisher-Yates shuffle algorithms</p>
+          <p class="text-xs text-slate-400">Randomly group active roster participants using Fisher-Yates shuffle algorithms</p>
         </div>
 
-        <div class="flex items-center space-x-4">
+        <div class="flex flex-wrap items-center gap-4">
           <input type="number" id="teamCountInput" min="2" max="20" value="4" 
                  class="w-32 px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 font-bold text-center text-base focus:outline-none focus:border-amber-400">
           <button onclick="generateTeams()" 
                   class="px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-sm transition-all">
             Generate Random Groups
+          </button>
+          <button onclick="copyTeamsToClipboard()" 
+                  class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all">
+            Copy Teams
           </button>
         </div>
 
@@ -234,7 +228,7 @@
 
           <div class="md:col-span-2">
             <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Base Mobile Portal QR Code URL</label>
-            <input type="url" id="qrBaseUrl" placeholder="https://yourusername.github.io/submit.html"
+            <input type="url" id="qrBaseUrl" placeholder="Leave blank to auto-derive submit.html target"
                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-sm"
                    onchange="updateQRCode()">
           </div>
@@ -244,7 +238,7 @@
 
   </main>
 
-  <!-- Winner Announcement Overlay Modal -->
+  <!-- Winner Announcement Modal -->
   <div id="winnerModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
     <div class="glass-card p-8 rounded-3xl max-w-lg w-full text-center space-y-6 border-2 border-amber-400/50 shadow-2xl transform scale-100 transition-all">
       <span class="text-5xl block animate-bounce">🎉</span>
@@ -254,7 +248,6 @@
         JUAN DELA CRUZ
       </div>
 
-      <!-- Integrated Speaker Timer Display -->
       <div id="speakerTimerContainer" class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-1">
         <p class="text-xs font-bold text-slate-400 uppercase">Speaker Time Limit</p>
         <div id="modalTimerDisplay" class="text-3xl font-mono font-bold text-amber-400">01:00</div>
@@ -267,15 +260,12 @@
     </div>
   </div>
 
-  <!-- JavaScript Application Architecture -->
   <script>
-    // System Configurations
     const CONFIG = {
-      API_URL: "https://script.google.com/macros/s/AKfycbyKGHEUW7PzF3mlkQuPDs7j8imrgNi-aTQKLyApPLDCfarpjo_01mNc6kR8area5sM8/exec",
+      API_URL: "https://script.google.com/macros/s/AKfycby_6xYp8WFW1E_pyPNjs5IINOAn-BkqDzzib9GBg_bC1WCxCIbyiqAmYohXkhIPPYly6g/exec",
       COLORS: ["#800000", "#FFD700", "#1E293B", "#D97706", "#991B1B", "#B45309", "#334155"]
     };
 
-    // Application State Variables
     let roster = [];
     let winnersList = [];
     let roomPin = "";
@@ -286,8 +276,9 @@
     let isManualOverride = false;
     let audioCtx = null;
     let modalTimerInterval = null;
+    let generatedTeamsData = [];
 
-    // Web Audio Synthesis Pre-Warming
+    // Web Audio Initialization
     function initAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -329,7 +320,7 @@
       });
     }
 
-    // Initialization Workflow
+    // App Initialization
     window.addEventListener('DOMContentLoaded', async () => {
       setupHotkeys();
       setupCanvasResizer();
@@ -339,7 +330,6 @@
       startPolling();
     });
 
-    // Room Session Initialization
     async function initRoomSession() {
       try {
         const res = await fetch(`${CONFIG.API_URL}?action=createRoom`);
@@ -354,14 +344,31 @@
       }
     }
 
-    // Safe QR Code URL Concatenation
+    // Fixed Robust QR Code Routing Logic
     function updateQRCode() {
       const qrContainer = document.getElementById('qrcode');
       qrContainer.innerHTML = '';
-      let baseUrl = document.getElementById('qrBaseUrl').value.trim() || window.location.href.split('?')[0];
       
-      const separator = baseUrl.includes('?') ? '&' : '?';
-      const targetUrl = roomPin ? `${baseUrl}${separator}pin=${roomPin}` : baseUrl;
+      let customUrl = document.getElementById('qrBaseUrl') ? document.getElementById('qrBaseUrl').value.trim() : '';
+      let targetUrl = '';
+
+      if (customUrl) {
+        targetUrl = customUrl;
+      } else {
+        let loc = window.location.href.split('?')[0].split('#')[0];
+        if (loc.endsWith('index.html')) {
+          targetUrl = loc.replace('index.html', 'submit.html');
+        } else if (loc.endsWith('/')) {
+          targetUrl = loc + 'submit.html';
+        } else {
+          targetUrl = loc.substring(0, loc.lastIndexOf('/')) + '/submit.html';
+        }
+      }
+
+      if (roomPin) {
+        const separator = targetUrl.includes('?') ? '&' : '?';
+        targetUrl += `${separator}pin=${roomPin}`;
+      }
 
       try {
         new QRCode(qrContainer, {
@@ -374,7 +381,6 @@
       } catch (e) {}
     }
 
-    // Fetch Available Sheet Tabs
     async function fetchTabs() {
       try {
         const res = await fetch(`${CONFIG.API_URL}?action=getTabs`);
@@ -392,7 +398,6 @@
       } catch (e) {}
     }
 
-    // Live Roster Fetch Engine
     async function fetchLiveRoster() {
       if (isManualOverride || isSpinning) return;
 
@@ -413,7 +418,7 @@
       fetchLiveRoster();
     }
 
-    // High-DPI Responsive Canvas Engine with N > 60 Label Suppression
+    // High-DPI Responsive Canvas Engine (Restored 5mm Edge Alignment)
     function setupCanvasResizer() {
       window.addEventListener('resize', resizeCanvas);
       resizeCanvas();
@@ -445,7 +450,7 @@
       const outsideRadius = (width / 2) - 10;
       const insideRadius = Math.max(20, Math.floor(width * 0.08));
       
-      const margin5mm = 19; // ~5mm alignment offset
+      const margin5mm = 19; // Exact 5mm alignment allowance (~19px)
       const textRadius = Math.max(10, outsideRadius - margin5mm);
 
       ctx.save();
@@ -475,12 +480,12 @@
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Label Suppression for Ultra-Dense Rosters (N > 60)
+        // Horizontal Slice Labeling with N > 60 Density Protection
         if (roster.length <= 60) {
           ctx.save();
           ctx.fillStyle = (i % 2 === 1) ? '#800000' : '#ffffff';
           
-          let fontSize = Math.max(10, Math.min(15, Math.floor(outsideRadius * 0.08)));
+          let fontSize = Math.max(10, Math.min(16, Math.floor(outsideRadius * 0.08)));
           if (roster.length > 30) fontSize = 11;
           if (roster.length > 45) fontSize = 10;
           ctx.font = `bold ${fontSize}px sans-serif`;
@@ -501,7 +506,6 @@
         }
       }
 
-      // High-Density Center Indicator Cap
       if (roster.length > 60) {
         ctx.fillStyle = '#FFD700';
         ctx.beginPath();
@@ -517,7 +521,7 @@
       ctx.restore();
     }
 
-    // Physical Wheel Rotation & Easing Engine
+    // Extended 4-8 Second Rotation Physics
     let spinAngleStart = 0;
     let spinTime = 0;
     let spinTimeTotal = 0;
@@ -530,7 +534,7 @@
 
       spinAngleStart = Math.random() * 10 + 20;
       spinTime = 0;
-      spinTimeTotal = Math.random() * 3000 + 4000; // 4-7 seconds spin
+      spinTimeTotal = Math.random() * 4000 + 4000; // 4-8 second spin
       lastTickAngle = startAngle;
 
       rotateWheel();
@@ -546,7 +550,6 @@
       const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
       startAngle += (spinAngle * Math.PI / 180);
       
-      // Sound trigger per slice pass
       const arc = Math.PI * 2 / roster.length;
       if (Math.abs(startAngle - lastTickAngle) >= arc) {
         playTickSound();
@@ -575,25 +578,21 @@
       announceWinner(winner);
     }
 
-    // Winner Handling & Modal Countdown
     function announceWinner(winner) {
       playVictoryFanfare();
       confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
 
       document.getElementById('winnerName').innerText = winner;
       
-      // Add to draw history
       winnersList.unshift(winner);
       updateWinnerList();
 
-      // Log Winner to Backend
       fetch(CONFIG.API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
         body: JSON.stringify({ action: 'logWinner', winner: winner, pin: roomPin })
       }).catch(e => {});
 
-      // Handle Non-Repeat Elimination
       const mode = document.getElementById('eliminationMode').value;
       if (mode === 'remove') {
         roster = roster.filter(name => name !== winner);
@@ -601,7 +600,6 @@
         drawWheel();
       }
 
-      // Configure Speaker Timer Display inside Modal
       const timerEnabled = document.getElementById('timerToggle').value === 'enabled';
       const timerContainer = document.getElementById('speakerTimerContainer');
       
@@ -647,7 +645,7 @@
     }
 
     function resetRoster() {
-      if (confirm('Reset draw history and reloading roster?')) {
+      if (confirm('Reset draw history and reload live roster?')) {
         winnersList = [];
         updateWinnerList();
         isManualOverride = false;
@@ -655,11 +653,10 @@
       }
     }
 
-    // Manual Edit Auto-Pause Listener
     function handleManualTyping() {
       isManualOverride = true;
       const status = document.getElementById('syncStatus');
-      status.innerText = "Auto-Sync Paused (Manual Typing)";
+      status.innerText = "Auto-Sync Paused (Manual Control)";
       status.className = "text-xs font-bold text-amber-400";
     }
 
@@ -668,10 +665,9 @@
       roster = text.split('\n').map(s => s.trim()).filter(s => s !== '');
       isManualOverride = true;
       drawWheel();
-      alert('Manual roster applied.');
+      alert('Manual roster changes applied.');
     }
 
-    // Visibility-Aware Polling Engine
     function startPolling() {
       stopPolling();
       if (!document.hidden) {
@@ -713,12 +709,12 @@
       }
     });
 
-    // Form Input Masked Hotkeys
+    // Form-Masked Hotkey Controls
     function setupHotkeys() {
       window.addEventListener('keydown', (e) => {
         const activeTag = document.activeElement ? document.activeElement.tagName : '';
         if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag)) {
-          return; // Ignore shortcuts while typing inside input fields
+          return;
         }
 
         if (e.code === 'Space') {
@@ -732,7 +728,6 @@
       });
     }
 
-    // Tab Navigation Switcher
     function switchTab(tabId) {
       document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
       document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
@@ -745,7 +740,6 @@
       }
     }
 
-    // Breakout Team Partition Generator (Fisher-Yates)
     function generateTeams() {
       if (roster.length === 0) return;
       const numTeams = parseInt(document.getElementById('teamCountInput').value) || 2;
@@ -756,13 +750,13 @@
         [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
       }
 
-      const teams = Array.from({ length: numTeams }, () => []);
+      generatedTeamsData = Array.from({ length: numTeams }, () => []);
       shuffled.forEach((member, index) => {
-        teams[index % numTeams].push(member);
+        generatedTeamsData[index % numTeams].push(member);
       });
 
       const display = document.getElementById('teamsDisplay');
-      display.innerHTML = teams.map((team, idx) => `
+      display.innerHTML = generatedTeamsData.map((team, idx) => `
         <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800">
           <h4 class="text-sm font-bold text-amber-400 uppercase mb-2">Team ${idx + 1} (${team.length})</h4>
           <ul class="text-xs space-y-1 text-slate-300">
@@ -770,6 +764,18 @@
           </ul>
         </div>
       `).join('');
+    }
+
+    function copyTeamsToClipboard() {
+      if (generatedTeamsData.length === 0) {
+        alert('Please generate teams first.');
+        return;
+      }
+
+      let text = generatedTeamsData.map((team, idx) => `--- TEAM ${idx + 1} ---\n` + team.join('\n')).join('\n\n');
+      navigator.clipboard.writeText(text).then(() => {
+        alert('Team partitions copied to clipboard!');
+      });
     }
   </script>
 </body>
