@@ -3,597 +3,389 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Carrot Spinner</title>
-  <!-- Tailwind CSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <!-- FontAwesome Icons -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- QRCode.js Library -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
+  <title>CARROT Spinner - Host Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
   <style>
-    /* Custom Scrollbars */
-    ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+    :root {
+      --maroon: #800000;
+      --gold: #FFD700;
+      --dark-bg: #0A0E1A;
+      --panel-bg: rgba(255, 255, 255, 0.05);
+      --border: rgba(255, 215, 0, 0.2);
     }
-    ::-webkit-scrollbar-track {
-      background: #1e293b;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--dark-bg);
+      color: #F8FAFC;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
     }
-    ::-webkit-scrollbar-thumb {
-      background: #475569;
-      border-radius: 3px;
+    header {
+      background: rgba(128, 0, 0, 0.3);
+      border-bottom: 1px solid var(--border);
+      padding: 0.8rem 1.5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #64748b;
+    .brand { font-weight: bold; color: var(--gold); font-size: 1.2rem; }
+    .nav-tabs button {
+      background: transparent;
+      border: 1px solid transparent;
+      color: #ccc;
+      padding: 6px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    .nav-tabs button.active {
+      background: var(--maroon);
+      color: var(--gold);
+      border-color: var(--border);
+    }
+    main {
+      flex: 1;
+      display: flex;
+      position: relative;
+      height: calc(100vh - 60px);
+    }
+    .tab-content {
+      display: none;
+      width: 100%;
+      height: 100%;
+      padding: 1rem;
+    }
+    .tab-content.active { display: flex; }
+    
+    /* Wheel View */
+    .stage-container {
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+    canvas#wheelCanvas {
+      max-height: calc(100vh - 100px);
+      max-width: 100%;
+    }
+    .pointer {
+      position: absolute;
+      top: 20px;
+      width: 0;
+      height: 0;
+      border-left: 20px solid transparent;
+      border-right: 20px solid transparent;
+      border-top: 35px solid var(--gold);
+      z-index: 10;
+      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.6));
     }
 
-    /* Modal Animation */
-    .modal-animate {
-      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    /* Roster Panel */
+    .side-panel {
+      width: 320px;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border);
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
     }
-    @keyframes popIn {
-      0% { transform: scale(0.8); opacity: 0; }
-      100% { transform: scale(1); opacity: 1; }
+    textarea {
+      flex: 1;
+      background: rgba(0,0,0,0.5);
+      border: 1px solid var(--border);
+      color: #fff;
+      padding: 10px;
+      border-radius: 8px;
+      resize: none;
+      font-family: inherit;
     }
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      background: var(--maroon);
+      color: var(--gold);
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .btn-gold { background: var(--gold); color: #000; }
+
+    /* Modal Overlay */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(8px);
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+    .modal-content {
+      background: #111827;
+      border: 2px solid var(--gold);
+      padding: 2rem;
+      border-radius: 16px;
+      text-align: center;
+      max-width: 450px;
+      width: 90%;
+    }
+    #winnerTitle { color: var(--gold); font-size: 2.5rem; margin: 1rem 0; }
   </style>
 </head>
-<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
+<body>
 
-  <!-- Header / Navigation Bar -->
-  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 px-6 py-3 flex items-center justify-between sticky top-0 z-30">
-    <div class="flex items-center space-x-3">
-      <div class="bg-orange-500 text-white p-2 rounded-xl shadow-lg shadow-orange-500/20">
-        <i class="fa-solid fa-carrot text-2xl"></i>
-      </div>
-      <div>
-        <h1 class="text-2xl font-bold bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
-          Carrot Spinner
-        </h1>
-        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v3.2</p>
-      </div>
+  <header>
+    <div class="brand">BISCAST SDS - CARROT Spinner</div>
+    <div class="nav-tabs">
+      <button class="active" onclick="switchTab('stageTab', this)">🎯 Wheel Stage</button>
+      <button onclick="switchTab('rosterTab', this)">📋 Roster & Sync</button>
     </div>
-
-    <!-- Active Room PIN Badge & Presenter Controls -->
-    <div class="flex items-center space-x-4">
-      <div class="bg-slate-900/90 border border-slate-700 px-4 py-1.5 rounded-xl flex items-center space-x-3">
-        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold">Room PIN:</span>
-        <span id="roomPinDisplay" class="text-xl font-extrabold text-amber-400 font-mono">------</span>
-      </div>
-      
-      <button onclick="openQRModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition flex items-center space-x-2 shadow-lg shadow-indigo-600/20">
-        <i class="fa-solid fa-qrcode"></i>
-        <span>Show QR</span>
-      </button>
-
-      <button onclick="spin()" class="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold px-6 py-2 rounded-xl shadow-lg shadow-orange-500/30 transition transform active:scale-95 flex items-center space-x-2">
-        <i class="fa-solid fa-play"></i>
-        <span>SPIN!</span>
-      </button>
+    <div>
+      <span>Room PIN: <strong id="pinDisplay" style="color:var(--gold);">------</strong></span>
+      <button class="btn btn-gold" style="margin-left:10px;" onclick="openQRModal()">📱 QR Code</button>
     </div>
   </header>
 
-  <!-- Main Grid Workspace -->
-  <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-[1920px] w-full mx-auto">
-
-    <!-- COLUMN 1: Large Spinner Wheel Stage -->
-    <section class="lg:col-span-8 xl:col-span-9 bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[500px]">
-      
-      <!-- Top Pointer Arrow (Yellow Triangle) -->
-      <div class="absolute top-2 z-10 text-amber-400 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] transform -translate-y-1">
-        <i class="fa-solid fa-caret-down text-5xl"></i>
+  <main>
+    <!-- Stage Tab -->
+    <div id="stageTab" class="tab-content active" style="justify-content:center; align-items:center;">
+      <div class="stage-container">
+        <div class="pointer"></div>
+        <canvas id="wheelCanvas" width="800" height="800"></canvas>
       </div>
-
-      <!-- Container for Canvas -->
-      <div id="canvasContainer" class="w-full flex-1 flex items-center justify-center relative max-h-[calc(100vh-120px)]">
-        <canvas id="wheelCanvas" class="max-w-full max-h-full object-contain cursor-pointer"></canvas>
-      </div>
-    </section>
-
-    <!-- COLUMN 2: Tabbed Sidebar Workspace -->
-    <section class="lg:col-span-4 xl:col-span-3 flex flex-col bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4">
-      
-      <!-- Tab Header Switcher Buttons -->
-      <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/80 mb-4 gap-1">
-        <button onclick="switchTab('roster')" id="tabBtn-roster" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-white bg-indigo-600 shadow">
-          <i class="fa-solid fa-list-check mr-1"></i> Roster
-        </button>
-        <button onclick="switchTab('teams')" id="tabBtn-teams" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white">
-          <i class="fa-solid fa-users mr-1"></i> Teams
-        </button>
-        <button onclick="switchTab('settings')" id="tabBtn-settings" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white">
-          <i class="fa-solid fa-gear mr-1"></i> Settings
-        </button>
-      </div>
-
-      <!-- TAB 1: Roster & Sync Content -->
-      <div id="tabContent-roster" class="flex-1 flex flex-col space-y-4">
-        <div class="flex items-center justify-between">
-          <span class="text-xs font-bold uppercase tracking-wide text-slate-300">Audience Roster</span>
-          <span id="rosterCountBadge" class="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded-full font-mono">0 Names</span>
+      <div class="side-panel">
+        <button class="btn btn-gold" style="font-size:1.2rem; padding:15px;" onclick="spinWheel()">SPIN (Space)</button>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <label><input type="checkbox" id="nonRepeatToggle"> Non-Repeat Winner</label>
         </div>
-
-        <textarea id="rosterInput" rows="6" placeholder="Enter names (one per line)..." class="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none" oninput="updateRosterFromText()"></textarea>
-
-        <div class="flex gap-2">
-          <button onclick="shuffleRoster()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition">
-            <i class="fa-solid fa-shuffle mr-1"></i> Shuffle
-          </button>
-          <button onclick="sortRoster()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition">
-            <i class="fa-solid fa-arrow-down-a-z mr-1"></i> Sort A-Z
-          </button>
-        </div>
-
-        <!-- Draw History Log -->
-        <div class="flex-1 flex flex-col pt-2 border-t border-slate-700/60">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold uppercase tracking-wide text-amber-400 flex items-center gap-1">
-              <i class="fa-solid fa-trophy text-xs"></i> Draw History
-            </span>
-            <button onclick="clearHistory()" class="text-slate-500 hover:text-red-400 text-xs transition">Clear</button>
-          </div>
-          <div id="drawHistoryLog" class="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl p-2 overflow-y-auto max-h-[160px] space-y-1">
-            <p class="text-xs text-slate-500 italic text-center py-3">No winners drawn yet.</p>
-          </div>
+        <div style="margin-top:auto;">
+          <small id="syncStatus" style="color:#aaa;">Auto-sync: Active</small>
         </div>
       </div>
+    </div>
 
-      <!-- TAB 2: Team Generator Content -->
-      <div id="tabContent-teams" class="flex-1 flex flex-col space-y-3 hidden">
-        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-2">
-          <label class="block text-xs font-bold text-slate-300">Number of Teams</label>
-          <div class="flex gap-2">
-            <input type="number" id="teamCountInput" value="3" min="2" max="20" class="w-20 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-center text-white focus:outline-none focus:border-indigo-500">
-            <button onclick="generateTeams()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1">
-              <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Teams
-            </button>
-          </div>
-        </div>
-
-        <div class="flex items-center justify-between pt-1">
-          <span class="text-xs font-bold uppercase tracking-wide text-slate-400">Generated Breakouts</span>
-          <button onclick="copyTeamsToClipboard()" class="text-indigo-400 hover:text-indigo-300 text-xs font-semibold flex items-center gap-1">
-            <i class="fa-solid fa-copy"></i> Copy Teams
-          </button>
-        </div>
-
-        <div id="teamsContainer" class="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl p-2 overflow-y-auto max-h-[320px] space-y-2">
-          <p class="text-xs text-slate-500 italic text-center py-6">Click "Generate Teams" to partition active roster.</p>
-        </div>
+    <!-- Roster Tab -->
+    <div id="rosterTab" class="tab-content" style="gap:1rem;">
+      <div style="flex:1; display:flex; flex-direction:column;">
+        <h3>Live Roster Data</h3>
+        <p style="font-size:0.85rem; color:#aaa; margin-bottom:0.5rem;">Auto-updates from phone registrations. Type below to edit manually.</p>
+        <textarea id="rosterInput" placeholder="Enter names (1 per line)..."></textarea>
       </div>
-
-      <!-- TAB 3: Settings Content -->
-      <div id="tabContent-settings" class="flex-1 flex flex-col space-y-4 hidden">
-        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-3">
-          <span class="text-xs font-bold uppercase tracking-wide text-slate-300 block">Spin Engine Rules</span>
-          
-          <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-xs text-slate-300">Eliminate Winner (Non-Repeat)</span>
-            <input type="checkbox" id="eliminateWinner" class="rounded bg-slate-800 border-slate-600 text-orange-500 focus:ring-0">
-          </label>
-
-          <label class="flex items-center justify-between cursor-pointer">
-            <span class="text-xs text-slate-300">Audio Sound Effects</span>
-            <input type="checkbox" id="audioToggle" checked class="rounded bg-slate-800 border-slate-600 text-orange-500 focus:ring-0">
-          </label>
-        </div>
-
-        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-2">
-          <span class="text-xs font-bold uppercase tracking-wide text-slate-300 block">API Configuration</span>
-          <label class="block text-[10px] text-slate-400">Google Apps Script Endpoint URL</label>
-          <input type="text" id="endpointInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500" onchange="updateEndpoint(this.value)">
-        </div>
-
-        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-2">
-          <span class="text-xs font-bold uppercase tracking-wide text-slate-300 block">Room Controls</span>
-          <button onclick="initRoom()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
-            <i class="fa-solid fa-rotate-right"></i> Regenerate Room PIN
-          </button>
-        </div>
+      <div style="width:250px; display:flex; flex-direction:column; gap:10px;">
+        <button class="btn" onclick="applyManualRoster()">Apply Roster Changes</button>
+        <button class="btn" style="background:#444;" onclick="fetchLiveRoster()">Force Live Sync</button>
       </div>
-
-    </section>
+    </div>
   </main>
 
-  <!-- Winner Modal Popup -->
-  <div id="winnerModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-    <div class="bg-slate-800 border border-slate-700 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl modal-animate relative">
-      <div class="w-16 h-16 bg-amber-500/20 border border-amber-500/40 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-400 text-3xl">
-        <i class="fa-solid fa-crown"></i>
+  <!-- Modal Announcement -->
+  <div id="winnerModal" class="modal">
+    <div class="modal-content">
+      <h2>🎉 WINNER! 🎉</h2>
+      <div id="winnerTitle">Participant Name</div>
+      <div style="margin-top:1.5rem; display:flex; gap:10px; justify-content:center;">
+        <button class="btn" onclick="closeModal()">Continue</button>
+        <button class="btn btn-gold" id="removeBtn" onclick="removeWinnerAndClose()">Remove & Continue</button>
       </div>
-      <h3 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-1">We Have A Winner!</h3>
-      <div id="winnerName" class="text-3xl font-extrabold text-amber-300 py-3 mb-6 border-y border-slate-700/60 font-serif break-words">---</div>
-      <button onclick="closeWinnerModal()" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold py-3 rounded-xl shadow-lg transition">
-        Continue
-      </button>
     </div>
   </div>
 
-  <!-- QR Code Modal -->
-  <div id="qrModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
-    <div class="bg-slate-800 border border-slate-700 p-6 rounded-3xl max-w-sm w-full text-center shadow-2xl modal-animate relative">
-      <button onclick="closeQRModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
-        <i class="fa-solid fa-xmark"></i>
-      </button>
-      <h3 class="text-lg font-bold text-slate-200 mb-1">Scan to Join Room</h3>
-      <p id="qrRoomPinLabel" class="text-xs text-amber-400 font-mono mb-4">PIN: ------</p>
-      
-      <div class="bg-white p-4 rounded-2xl inline-block shadow-inner mb-4">
-        <div id="qrcode"></div>
-      </div>
-      
-      <p class="text-xs text-slate-400">Point phone camera to submit entries to this Carrot Spinner session.</p>
+  <!-- QR Modal -->
+  <div id="qrModal" class="modal">
+    <div class="modal-content">
+      <h3>Scan to Join Room</h3>
+      <div id="qrcode" style="display:flex; justify-content:center; margin:1.5rem 0;"></div>
+      <p id="qrUrlText" style="font-size:0.8rem; opacity:0.8;"></p>
+      <button class="btn" style="margin-top:1rem;" onclick="closeQRModal()">Close</button>
     </div>
   </div>
 
-  <!-- JavaScript Logic -->
   <script>
-    // Configuration Object containing Backend Execution Endpoint
+    // Configuration Settings
     const CONFIG = {
       ENDPOINT: "https://script.google.com/macros/s/AKfycby_6xYp8WFW1E_pyPNjs5IINOAn-BkqDzzib9GBg_bC1WCxCIbyiqAmYohXkhIPPYly6g/exec",
-      AUTO_SYNC_INTERVAL: 4000
+      COLORS: ['#800000', '#A00000', '#D4AF37', '#222222', '#333333']
     };
 
-    let currentRoomPin = "1001";
-    let roster = ["Blue", "Dark Azure", "Gray", "Green", "Aqua Blue"];
-    let history = [];
-    let lastGeneratedTeams = [];
+    let currentRoomPin = Math.floor(100000 + Math.random() * 900000).toString();
+    let roster = ["Participant 1", "Participant 2", "Participant 3", "Participant 4"];
     let isSpinning = false;
     let isEditingRoster = false;
-    let syncTimer = null;
-
-    let startAngle = 0;
-    let spinTimeout = null;
-    let spinAngleStart = 10;
-    let spinTime = 0;
-    let spinTimeTotal = 0;
-
-    const colors = [
-      "#1E2433", "#D97706", "#0F766E", "#4338CA", "#0284C7", "#7C3AED", "#881337"
-    ];
-    const orbColors = ["#3B82F6", "#00BFFF", "#FFFFFF", "#22C55E", "#38BDF8", "#3B82F6", "#00BFFF", "#FFFFFF", "#22C55E", "#38BDF8"];
+    let currentAngle = 0;
+    let selectedWinner = "";
 
     const canvas = document.getElementById('wheelCanvas');
     const ctx = canvas.getContext('2d');
     const rosterInput = document.getElementById('rosterInput');
 
-    window.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('endpointInput').value = CONFIG.ENDPOINT;
-      initRoom();
-      resizeCanvas();
-      startAutoSync();
-      window.addEventListener('resize', resizeCanvas);
+    document.getElementById('pinDisplay').textContent = currentRoomPin;
 
-      // Lock auto-sync polling while actively typing
-      rosterInput.addEventListener('focus', () => { isEditingRoster = true; });
-      rosterInput.addEventListener('blur', () => { isEditingRoster = false; });
+    // Hotkey Masking to prevent triggers when typing in inputs
+    window.addEventListener('keydown', (e) => {
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
+      if (e.code === 'Space') { e.preventDefault(); spinWheel(); }
+      if (e.code === 'Escape') { closeModal(); closeQRModal(); }
     });
 
-    function updateEndpoint(newVal) {
-      CONFIG.ENDPOINT = newVal.trim();
+    rosterInput.addEventListener('focus', () => { isEditingRoster = true; });
+    rosterInput.addEventListener('blur', () => { isEditingRoster = false; });
+
+    function switchTab(tabId, btn) {
+      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.nav-tabs button').forEach(b => b.classList.remove('active'));
+      document.getElementById(tabId).classList.add('active');
+      btn.classList.add('active');
     }
 
-    function switchTab(tabKey) {
-      ['roster', 'teams', 'settings'].forEach(key => {
-        document.getElementById(`tabContent-${key}`).classList.add('hidden');
-        const btn = document.getElementById(`tabBtn-${key}`);
-        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow');
-        btn.classList.add('text-slate-400');
-      });
-
-      document.getElementById(`tabContent-${tabKey}`).classList.remove('hidden');
-      const activeBtn = document.getElementById(`tabBtn-${tabKey}`);
-      activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow');
-      activeBtn.classList.remove('text-slate-400');
-    }
-
-    function initRoom() {
-      currentRoomPin = Math.floor(100000 + Math.random() * 900000).toString();
-      document.getElementById('roomPinDisplay').innerText = currentRoomPin;
-      document.getElementById('qrRoomPinLabel').innerText = `PIN: ${currentRoomPin}`;
-      rosterInput.value = roster.join('\n');
-      updateRosterBadge();
-      drawWheel();
-      fetchLiveRoster();
-    }
-  function fetchLiveRoster() {
-  if (isSpinning || isEditingRoster || !CONFIG.ENDPOINT) return;
-
-  // Pass currentRoomPin as both 'pin' and 'sheet' to support all Code.gs variations
-  const url = `${CONFIG.ENDPOINT}?action=getRoomRoster&pin=${currentRoomPin}&sheet=${currentRoomPin}`;
-
-  fetch(url)
-    .then(res => res.json())
-    .then(data => {
-      // Check for valid roster response across different backend payload formats
-      let liveNames = [];
-      if (data.status === "SUCCESS" && Array.isArray(data.roster)) {
-        liveNames = data.roster;
-      } else if (data.status === "success" && Array.isArray(data.roster)) {
-        liveNames = data.roster;
-      } else if (Array.isArray(data)) {
-        liveNames = data;
-      }
-
-      if (liveNames.length > 0) {
-        roster = liveNames;
-        rosterInput.value = roster.join('\n');
-        updateRosterBadge();
-        drawWheel();
-      }
-    })
-    .catch(err => console.warn("Auto-sync fetch failed:", err));
-}
-          }
-        })
-        .catch(err => console.warn("Auto-sync fetch failed:", err));
-    }
-
-    function startAutoSync() {
-      if (syncTimer) clearInterval(syncTimer);
-      syncTimer = setInterval(fetchLiveRoster, CONFIG.AUTO_SYNC_INTERVAL);
-    }
-
-    function resizeCanvas() {
-      const container = document.getElementById('canvasContainer');
-      const size = Math.min(container.clientWidth, container.clientHeight) - 20;
-      canvas.width = Math.max(size, 320);
-      canvas.height = Math.max(size, 320);
-      drawWheel();
-    }
-
-    function updateRosterFromText() {
-      const raw = rosterInput.value.split('\n');
-      roster = raw.map(s => s.trim()).filter(s => s.length > 0);
-      updateRosterBadge();
-      drawWheel();
-    }
-
-    function updateRosterBadge() {
-      document.getElementById('rosterCountBadge').innerText = `${roster.length} Names`;
-    }
-
+    // Canvas Wheel Rendering
     function drawWheel() {
-      if (!ctx) return;
+      const numSlices = roster.length;
+      if (numSlices === 0) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      const arc = (2 * Math.PI) / numSlices;
+      const radius = canvas.width / 2;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      if (roster.length === 0) {
-        ctx.save();
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.fillStyle = '#1e293b';
+      for (let i = 0; i < numSlices; i++) {
+        const angle = currentAngle + i * arc;
         ctx.beginPath();
-        ctx.arc(0, 0, canvas.width / 2 - 10, 0, Math.PI * 2);
+        ctx.fillStyle = CONFIG.COLORS[i % CONFIG.COLORS.length];
+        ctx.moveTo(radius, radius);
+        ctx.arc(radius, radius, radius - 10, angle, angle + arc);
+        ctx.lineTo(radius, radius);
         ctx.fill();
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'bold 16px Georgia, serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('Add names to populate wheel', 0, 0);
-        ctx.restore();
-        return;
-      }
-
-      const outsideRadius = canvas.width / 2 - 15;
-      const insideRadius = 32;
-      const arc = (Math.PI * 2) / roster.length;
-
-      ctx.save();
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-
-      ctx.beginPath();
-      ctx.arc(0, 0, outsideRadius + 3, 0, Math.PI * 2);
-      ctx.fillStyle = "#0c1322";
-      ctx.fill();
-
-      for (let i = 0; i < roster.length; i++) {
-        const angle = startAngle + i * arc;
-        ctx.fillStyle = colors[i % colors.length];
-
-        ctx.beginPath();
-        ctx.arc(0, 0, outsideRadius, angle, angle + arc, false);
-        ctx.arc(0, 0, insideRadius, angle + arc, angle, true);
-        ctx.fill();
-        ctx.strokeStyle = '#0B0F19';
-        ctx.lineWidth = 2.5;
         ctx.stroke();
 
+        // Label Rendering with 5mm edge offset margin
         ctx.save();
-        const textAngle = angle + arc / 2;
-        ctx.rotate(textAngle);
-
-        const midRadius = (outsideRadius + insideRadius) / 2 + 10;
-        ctx.fillStyle = "#FFFFFF";
-        let fontSize = Math.floor(outsideRadius / (roster.length * 0.35));
-        fontSize = Math.min(Math.max(fontSize, 12), 20);
-        ctx.font = `bold ${fontSize}px Georgia, serif`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        let label = roster[i];
-        if (label.length > 12) label = label.substring(0, 10) + '..';
-        ctx.fillText(label, midRadius, 0);
-
-        const orbX = midRadius - (ctx.measureText(label).width / 2) - 14;
-        const orbRadius = Math.max(4, fontSize * 0.38);
-
-        const orbGradient = ctx.createRadialGradient(
-          orbX - orbRadius * 0.3, -orbRadius * 0.3, orbRadius * 0.1,
-          orbX, 0, orbRadius
-        );
-        const mainOrbColor = orbColors[i % orbColors.length];
-        orbGradient.addColorStop(0, '#FFFFFF');
-        orbGradient.addColorStop(0.4, mainOrbColor);
-        orbGradient.addColorStop(1, '#000000');
-
-        ctx.beginPath();
-        ctx.arc(orbX, 0, orbRadius, 0, Math.PI * 2);
-        ctx.fillStyle = orbGradient;
-        ctx.fill();
-
+        ctx.translate(radius, radius);
+        ctx.rotate(angle + arc / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#FFF";
+        ctx.font = "bold 20px sans-serif";
+        ctx.fillText(roster[i], radius - 30, 6);
         ctx.restore();
       }
-
-      ctx.beginPath();
-      ctx.arc(0, 0, insideRadius + 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#EAB308';
-      ctx.fill();
-
-      ctx.beginPath();
-      ctx.arc(0, 0, insideRadius, 0, Math.PI * 2);
-      ctx.fillStyle = '#800000';
-      ctx.fill();
-      ctx.strokeStyle = '#FACC15';
-      ctx.lineWidth = 2.5;
-      ctx.stroke();
-
-      ctx.restore();
     }
 
-    function rotateWheel() {
-      spinTime += 30;
-      if (spinTime >= spinTimeTotal) {
-        clearTimeout(spinTimeout);
-        isSpinning = false;
-        determineWinner();
-        return;
-      }
-      
-      const spinProgress = spinTime / spinTimeTotal;
-      const easeOut = 1 - Math.pow(1 - spinProgress, 3);
-      const angleChange = spinAngleStart * (1 - easeOut);
-      
-      startAngle += (angleChange * Math.PI / 180);
-      drawWheel();
-      spinTimeout = setTimeout(rotateWheel, 30);
-    }
-
-    function spin() {
+    // Synchronized Wheel Physics Spin
+    function spinWheel() {
       if (isSpinning || roster.length === 0) return;
       isSpinning = true;
-      spinAngleStart = Math.random() * 10 + 15;
-      spinTime = 0;
-      spinTimeTotal = Math.random() * 3000 + 10000;
-      rotateWheel();
+
+      const totalRotation = Math.PI * 2 * (5 + Math.random() * 5);
+      const duration = 4000;
+      const start = performance.now();
+      const startAngle = currentAngle;
+
+      function animate(time) {
+        let elapsed = time - start;
+        let progress = Math.min(elapsed / duration, 1);
+        let easeOut = 1 - Math.pow(1 - progress, 3);
+
+        currentAngle = startAngle + totalRotation * easeOut;
+        drawWheel();
+
+        if (progress < 1) {
+          requestAnimationFrame(animate);
+        } else {
+          isSpinning = false;
+          determineWinner();
+        }
+      }
+      requestAnimationFrame(animate);
     }
 
     function determineWinner() {
-      const degrees = (startAngle * 180 / Math.PI) % 360;
-      const arcd = 360 / roster.length;
+      const numSlices = roster.length;
+      const arc = (2 * Math.PI) / numSlices;
+      const normalizedAngle = (1.5 * Math.PI - (currentAngle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI);
+      const winnerIndex = Math.floor(normalizedAngle / arc) % numSlices;
+
+      selectedWinner = roster[winnerIndex];
+      document.getElementById('winnerTitle').textContent = selectedWinner;
+      document.getElementById('winnerModal').style.display = 'flex';
       
-      let index = Math.floor((360 - (degrees % 360) + 270) % 360 / arcd);
-      index = (index + roster.length) % roster.length;
+      confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      logWinnerToBackend(selectedWinner);
+    }
 
-      const winner = roster[index];
-      document.getElementById('winnerName').innerText = winner;
-      document.getElementById('winnerModal').classList.remove('hidden');
+    function closeModal() { document.getElementById('winnerModal').style.display = 'none'; }
 
-      history.unshift({ name: winner, time: new Date().toLocaleTimeString() });
-      renderHistory();
+    function removeWinnerAndClose() {
+      roster = roster.filter(name => name !== selectedWinner);
+      rosterInput.value = roster.join('\n');
+      drawWheel();
+      closeModal();
+    }
 
-      if (document.getElementById('eliminateWinner').checked) {
-        roster.splice(index, 1);
-        rosterInput.value = roster.join('\n');
-        updateRosterBadge();
+    function applyManualRoster() {
+      const names = rosterInput.value.split('\n').map(n => n.trim()).filter(n => n);
+      if (names.length > 0) {
+        roster = names;
         drawWheel();
       }
     }
 
-    function closeWinnerModal() {
-      document.getElementById('winnerModal').classList.add('hidden');
+    // Auto-Sync Live Poll Fetcher
+    function fetchLiveRoster() {
+      if (isSpinning || isEditingRoster || !CONFIG.ENDPOINT) return;
+
+      const url = `${CONFIG.ENDPOINT}?action=getRoomRoster&pin=${currentRoomPin}&sheet=${currentRoomPin}`;
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          let liveNames = [];
+          if (data.status === "SUCCESS" && Array.isArray(data.roster)) {
+            liveNames = data.roster;
+          }
+          if (liveNames.length > 0) {
+            roster = liveNames;
+            rosterInput.value = roster.join('\n');
+            drawWheel();
+          }
+        })
+        .catch(err => console.warn("Polling error:", err));
     }
 
-    function renderHistory() {
-      const container = document.getElementById('drawHistoryLog');
-      if (history.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-500 italic text-center py-3">No winners drawn yet.</p>`;
-        return;
-      }
-
-      container.innerHTML = history.map(item => `
-        <div class="flex items-center justify-between bg-slate-800/80 p-2 rounded-lg border border-slate-700/50">
-          <span class="text-xs font-semibold text-amber-300 font-serif">${item.name}</span>
-          <span class="text-[10px] text-slate-500">${item.time}</span>
-        </div>
-      `).join('');
-    }
-
-    function clearHistory() {
-      history = [];
-      renderHistory();
-    }
-
-    function shuffleRoster() {
-      for (let i = roster.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [roster[i], roster[j]] = [roster[j], roster[i]];
-      }
-      rosterInput.value = roster.join('\n');
-      drawWheel();
-    }
-
-    function sortRoster() {
-      roster.sort((a, b) => a.localeCompare(b));
-      rosterInput.value = roster.join('\n');
-      drawWheel();
-    }
-
-    function generateTeams() {
-      if (roster.length === 0) return;
-      const count = parseInt(document.getElementById('teamCountInput').value) || 3;
-      const shuffled = [...roster].sort(() => Math.random() - 0.5);
-      
-      lastGeneratedTeams = Array.from({ length: count }, () => []);
-      shuffled.forEach((name, idx) => {
-        lastGeneratedTeams[idx % count].push(name);
-      });
-
-      const container = document.getElementById('teamsContainer');
-      container.innerHTML = lastGeneratedTeams.map((team, idx) => `
-        <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl">
-          <span class="text-xs font-bold text-indigo-400 block mb-1">Team ${idx + 1} (${team.length})</span>
-          <p class="text-xs text-slate-300 leading-relaxed font-serif">${team.join(', ')}</p>
-        </div>
-      `).join('');
-    }
-
-    function copyTeamsToClipboard() {
-      if (lastGeneratedTeams.length === 0) return;
-      const formatted = lastGeneratedTeams.map((team, idx) => `Team ${idx + 1}:\n${team.join('\n')}`).join('\n\n');
-      navigator.clipboard.writeText(formatted).then(() => {
-        alert('Teams copied to clipboard!');
+    function logWinnerToBackend(winner) {
+      if (!CONFIG.ENDPOINT) return;
+      fetch(CONFIG.ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'logWinner', winner: winner, pin: currentRoomPin })
       });
     }
 
     function openQRModal() {
-      const qrContainer = document.getElementById('qrcode');
-      qrContainer.innerHTML = '';
+      const baseUrl = window.location.href.replace('index.html', '').split('?')[0];
+      const targetUrl = `${baseUrl}submit.html?pin=${currentRoomPin}`;
       
-      let baseUrl = window.location.href.split('?')[0].split('#')[0];
-      if (baseUrl.endsWith('/index.html')) {
-        baseUrl = baseUrl.replace('/index.html', '/submit.html');
-      } else if (baseUrl.endsWith('/')) {
-        baseUrl += 'submit.html';
-      } else {
-        baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/')) + '/submit.html';
-      }
-
-      const targetUrl = `${baseUrl}?pin=${currentRoomPin}`;
-
-      new QRCode(qrContainer, {
-        text: targetUrl,
-        width: 180,
-        height: 180,
-        colorDark : "#0f172a",
-        colorLight : "#ffffff",
-        correctLevel : QRCode.CorrectLevel.H
+      document.getElementById('qrcode').innerHTML = '';
+      QRCode.toCanvas(targetUrl, { width: 200 }, function (err, canvas) {
+        if (!err) document.getElementById('qrcode').appendChild(canvas);
       });
-
-      document.getElementById('qrModal').classList.remove('hidden');
+      
+      document.getElementById('qrUrlText').textContent = targetUrl;
+      document.getElementById('qrModal').style.display = 'flex';
     }
 
-    function closeQRModal() {
-      document.getElementById('qrModal').classList.add('hidden');
-    }
+    function closeQRModal() { document.getElementById('qrModal').style.display = 'none'; }
+
+    // Init Logic
+    rosterInput.value = roster.join('\n');
+    drawWheel();
+    setInterval(fetchLiveRoster, 4000); // Poll backend every 4s
   </script>
 </body>
 </html>
