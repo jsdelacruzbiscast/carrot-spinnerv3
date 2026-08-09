@@ -86,11 +86,11 @@
   <header>
     <div class="brand-group">
       <div class="brand">CARROT Spinner</div>
-      <div class="attribution">BISCAST Student Development Services | jonatzdelacruz | v2.1</div>
+      <div class="attribution">jonatzdelacruz | v2.1</div>
     </div>
     <div class="nav-tabs">
       <button class="active" onclick="switchTab('stageTab', this)">🎯 Wheel Stage</button>
-      <button onclick="switchTab('rosterTab', this)">📋 Roster & Sync</button>
+      <button onclick="switchTab('rosterTab', this)">📋 Roster Data</button>
     </div>
     <div>
       <span>Room PIN: <strong id="pinDisplay" style="color:var(--gold);">------</strong></span>
@@ -117,13 +117,12 @@
     <div id="rosterTab" class="tab-content" style="gap:1rem;">
       <div style="flex:1; display:flex; flex-direction:column;">
         <h3>Live Roster Data</h3>
-        <p style="font-size:0.85rem; color:#aaa; margin-bottom:0.5rem;">Auto-updates from phone submissions. Manual edits pause background sync.</p>
+        <p style="font-size:0.85rem; color:#aaa; margin-bottom:0.5rem;">Edit names below or load directly from Google Sheets.</p>
         <textarea id="rosterInput" placeholder="Enter names (1 per line)..."></textarea>
       </div>
       <div style="width:250px; display:flex; flex-direction:column; gap:10px;">
         <button class="btn" onclick="applyManualRoster()">Apply Manual Changes</button>
-        <button class="btn" style="background:#444;" onclick="fetchLiveRoster(true)">Force Live Sync</button>
-        <button class="btn" style="background:#800000; color:#fff;" onclick="resetEliminations()">Reset Eliminated List</button>
+        <button class="btn" style="background:#444;" onclick="fetchLiveRoster(true)">Sync From Sheet</button>
       </div>
     </div>
   </main>
@@ -158,7 +157,6 @@
 
     let currentRoomPin = Math.floor(100000 + Math.random() * 900000).toString();
     let roster = ["Participant 1", "Participant 2", "Participant 3", "Participant 4"];
-    let eliminatedWinners = new Set();
     let isSpinning = false;
     let isEditingRoster = false;
     let currentAngle = 0;
@@ -170,16 +168,15 @@
 
     document.getElementById('pinDisplay').textContent = currentRoomPin;
 
-    // Hotkey input masking (Bypasses active inputs/textareas)
+    // Hotkey masking: Ignore keypresses when typing inside form elements
     window.addEventListener('keydown', (e) => {
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
       if (e.code === 'Space') { e.preventDefault(); spinWheel(); }
       if (e.code === 'Escape') { closeModal(); closeQRModal(); }
     });
 
-    // Pause auto-sync while presenter types
-    rosterInput.addEventListener('focus', () => { isEditingRoster = true; updateSyncBadge("Paused (Editing)"); });
-    rosterInput.addEventListener('blur', () => { isEditingRoster = false; updateSyncBadge("Active"); });
+    rosterInput.addEventListener('focus', () => { isEditingRoster = true; });
+    rosterInput.addEventListener('blur', () => { isEditingRoster = false; });
 
     function switchTab(tabId, btn) {
       document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -188,11 +185,6 @@
       btn.classList.add('active');
     }
 
-    function updateSyncBadge(status) {
-      document.getElementById('syncStatus').textContent = `Auto-sync: ${status}`;
-    }
-
-    // Canvas Wheel Renderer
     function drawWheel() {
       const numSlices = roster.length;
       if (numSlices === 0) {
@@ -214,20 +206,14 @@
         ctx.fill();
         ctx.stroke();
 
-        // Adaptive text rendering
-        if (numSlices <= 60) {
-          ctx.save();
-          ctx.translate(radius, radius);
-          ctx.rotate(angle + arc / 2);
-          ctx.textAlign = "right";
-          ctx.fillStyle = "#FFF";
-          ctx.font = numSlices > 30 ? "bold 14px sans-serif" : "bold 18px sans-serif";
-          
-          // 5mm Edge Margin Offset (~19px)
-          const edgeOffsetMargin = 19;
-          ctx.fillText(roster[i], radius - 10 - edgeOffsetMargin, 6);
-          ctx.restore();
-        }
+        ctx.save();
+        ctx.translate(radius, radius);
+        ctx.rotate(angle + arc / 2);
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#FFF";
+        ctx.font = numSlices > 30 ? "bold 14px sans-serif" : "bold 18px sans-serif";
+        ctx.fillText(roster[i], radius - 25, 6);
+        ctx.restore();
       }
     }
 
@@ -269,22 +255,15 @@
       document.getElementById('winnerModal').style.display = 'flex';
       
       confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
-      logWinnerToBackend(selectedWinner);
     }
 
     function closeModal() { document.getElementById('winnerModal').style.display = 'none'; }
 
     function removeWinnerAndClose() {
-      eliminatedWinners.add(selectedWinner.toLowerCase());
-      roster = roster.filter(name => name.toLowerCase() !== selectedWinner.toLowerCase());
+      roster = roster.filter(name => name !== selectedWinner);
       rosterInput.value = roster.join('\n');
       drawWheel();
       closeModal();
-    }
-
-    function resetEliminations() {
-      eliminatedWinners.clear();
-      fetchLiveRoster(true);
     }
 
     function applyManualRoster() {
@@ -295,36 +274,23 @@
       }
     }
 
-    // Auto-Sync with Elimination State Preservation
     function fetchLiveRoster(force = false) {
-      if ((isSpinning || isEditingRoster || document.hidden) && !force) return;
+      if ((isSpinning || isEditingRoster) && !force) return;
 
       const url = `${CONFIG.ENDPOINT}?action=getRoomRoster&pin=${currentRoomPin}&sheet=${currentRoomPin}`;
       fetch(url)
         .then(res => res.json())
         .then(data => {
-          if (data.status === "SUCCESS" && Array.isArray(data.roster)) {
-            // Filter out eliminated winners from payload
-            const freshRoster = data.roster.filter(name => !eliminatedWinners.has(name.toLowerCase()));
-            if (freshRoster.length > 0) {
-              roster = freshRoster;
-              rosterInput.value = roster.join('\n');
-              drawWheel();
-            }
+          if (data.status === "SUCCESS" && Array.isArray(data.roster) && data.roster.length > 0) {
+            roster = data.roster;
+            rosterInput.value = roster.join('\n');
+            drawWheel();
           }
         })
-        .catch(err => console.warn("Sync fetch error:", err));
+        .catch(err => console.warn("Fetch error:", err));
     }
 
-    function logWinnerToBackend(winner) {
-      if (!CONFIG.ENDPOINT) return;
-      fetch(CONFIG.ENDPOINT, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'logWinner', winner: winner, pin: currentRoomPin })
-      });
-    }
-
+    // QR Code generation target pointing specifically to submit.html
     function openQRModal() {
       let baseUrl = window.location.href.split('?')[0];
       baseUrl = baseUrl.replace(/index\.html$/, '');
@@ -346,7 +312,6 @@
     // Init
     rosterInput.value = roster.join('\n');
     drawWheel();
-    setInterval(() => fetchLiveRoster(), 5000); // 5-second polling interval
   </script>
 </body>
 </html>
