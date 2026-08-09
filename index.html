@@ -50,7 +50,7 @@
         <h1 class="text-2xl font-bold bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
           Carrot Spinner
         </h1>
-        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v3.1</p>
+        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v3.2</p>
       </div>
     </div>
 
@@ -79,64 +79,110 @@
     <!-- COLUMN 1: Large Spinner Wheel Stage (~72% width on desktop) -->
     <section class="lg:col-span-8 xl:col-span-9 bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[500px]">
       
-      <!-- Top Pointer Arrow -->
-      <div class="absolute top-2 z-10 text-red-500 drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)] transform translate-y-1">
+      <!-- Top Pointer Arrow (Yellow Triangle) -->
+      <div class="absolute top-2 z-10 text-amber-400 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] transform -translate-y-1">
         <i class="fa-solid fa-caret-down text-5xl"></i>
       </div>
 
-      <!-- Container that auto-scales canvas based on available height -->
+      <!-- Container for Canvas -->
       <div id="canvasContainer" class="w-full flex-1 flex items-center justify-center relative max-h-[calc(100vh-120px)]">
         <canvas id="wheelCanvas" class="max-w-full max-h-full object-contain cursor-pointer"></canvas>
       </div>
-
-      <!-- Quick Action Toolbar -->
-      <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
-        <button onclick="shuffleRoster()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition">
-          <i class="fa-solid fa-shuffle mr-1"></i> Shuffle
-        </button>
-        <button onclick="sortRoster()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition">
-          <i class="fa-solid fa-arrow-down-a-z mr-1"></i> Sort A-Z
-        </button>
-        <label class="flex items-center space-x-2 bg-slate-900/60 border border-slate-700/60 px-3 py-1.5 rounded-lg cursor-pointer text-xs">
-          <input type="checkbox" id="eliminateWinner" class="rounded bg-slate-800 border-slate-600 text-orange-500 focus:ring-0">
-          <span class="text-slate-300">Eliminate Winner</span>
-        </label>
-      </div>
     </section>
 
-    <!-- COLUMN 2: Audience Mobile Portal & Draw History Sidebar (~28% width on desktop) -->
-    <section class="lg:col-span-4 xl:col-span-3 flex flex-col space-y-4">
+    <!-- COLUMN 2: Tabbed Sidebar Workspace (~28% width on desktop) -->
+    <section class="lg:col-span-4 xl:col-span-3 flex flex-col bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4">
       
-      <!-- Audience Mobile Portal Block -->
-      <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 flex flex-col">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-2">
-            <i class="fa-solid fa-mobile-screen-button text-indigo-400"></i>
-            <span>Audience Mobile Portal</span>
-          </h2>
+      <!-- Tab Header Switcher Buttons -->
+      <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/80 mb-4 gap-1">
+        <button onclick="switchTab('roster')" id="tabBtn-roster" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-white bg-indigo-600 shadow">
+          <i class="fa-solid fa-list-check mr-1"></i> Roster
+        </button>
+        <button onclick="switchTab('teams')" id="tabBtn-teams" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white">
+          <i class="fa-solid fa-users mr-1"></i> Teams
+        </button>
+        <button onclick="switchTab('settings')" id="tabBtn-settings" class="flex-1 py-2 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white">
+          <i class="fa-solid fa-gear mr-1"></i> Settings
+        </button>
+      </div>
+
+      <!-- TAB 1: Roster & Sync Content -->
+      <div id="tabContent-roster" class="flex-1 flex flex-col space-y-4">
+        <div class="flex items-center justify-between">
+          <span class="text-xs font-bold uppercase tracking-wide text-slate-300">Audience Roster</span>
           <span id="rosterCountBadge" class="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded-full font-mono">0 Names</span>
         </div>
-        
-        <!-- Roster Quick Input Area -->
-        <textarea id="rosterInput" rows="4" placeholder="Enter names (one per line)..." class="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none mb-2" oninput="updateRosterFromText()"></textarea>
-        <div class="text-[10px] text-slate-500 flex justify-between">
-          <span>Auto-sync active</span>
-          <span>Press Enter for new line</span>
+
+        <textarea id="rosterInput" rows="6" placeholder="Enter names (one per line)..." class="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none" oninput="updateRosterFromText()"></textarea>
+
+        <div class="flex gap-2">
+          <button onclick="shuffleRoster()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition">
+            <i class="fa-solid fa-shuffle mr-1"></i> Shuffle
+          </button>
+          <button onclick="sortRoster()" class="flex-1 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition">
+            <i class="fa-solid fa-arrow-down-a-z mr-1"></i> Sort A-Z
+          </button>
+        </div>
+
+        <!-- Draw History Log Inside Roster Tab -->
+        <div class="flex-1 flex flex-col pt-2 border-t border-slate-700/60">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-xs font-bold uppercase tracking-wide text-amber-400 flex items-center gap-1">
+              <i class="fa-solid fa-trophy text-xs"></i> Draw History
+            </span>
+            <button onclick="clearHistory()" class="text-slate-500 hover:text-red-400 text-xs transition">Clear</button>
+          </div>
+          <div id="drawHistoryLog" class="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl p-2 overflow-y-auto max-h-[160px] space-y-1">
+            <p class="text-xs text-slate-500 italic text-center py-3">No winners drawn yet.</p>
+          </div>
         </div>
       </div>
 
-      <!-- Draw History Log Block -->
-      <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 flex-1 flex flex-col min-h-[250px]">
-        <div class="flex items-center justify-between mb-3">
-          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-2">
-            <i class="fa-solid fa-trophy text-amber-400"></i>
-            <span>Draw History</span>
-          </h2>
-          <button onclick="clearHistory()" class="text-slate-500 hover:text-red-400 text-xs transition">Clear</button>
+      <!-- TAB 2: Team Generator Content -->
+      <div id="tabContent-teams" class="flex-1 flex flex-col space-y-3 hidden">
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-2">
+          <label class="block text-xs font-bold text-slate-300">Number of Teams</label>
+          <div class="flex gap-2">
+            <input type="number" id="teamCountInput" value="3" min="2" max="20" class="w-20 bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-center text-white focus:outline-none focus:border-indigo-500">
+            <button onclick="generateTeams()" class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition flex items-center justify-center gap-1">
+              <i class="fa-solid fa-wand-magic-sparkles"></i> Generate Teams
+            </button>
+          </div>
         </div>
 
-        <div id="drawHistoryLog" class="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl p-3 overflow-y-auto max-h-[300px] space-y-2">
-          <p class="text-xs text-slate-500 italic text-center py-4">No winners drawn yet.</p>
+        <div class="flex items-center justify-between pt-1">
+          <span class="text-xs font-bold uppercase tracking-wide text-slate-400">Generated Breakouts</span>
+          <button onclick="copyTeamsToClipboard()" class="text-indigo-400 hover:text-indigo-300 text-xs font-semibold flex items-center gap-1">
+            <i class="fa-solid fa-copy"></i> Copy Teams
+          </button>
+        </div>
+
+        <div id="teamsContainer" class="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl p-2 overflow-y-auto max-h-[320px] space-y-2">
+          <p class="text-xs text-slate-500 italic text-center py-6">Click "Generate Teams" to partition active roster.</p>
+        </div>
+      </div>
+
+      <!-- TAB 3: Settings Content -->
+      <div id="tabContent-settings" class="flex-1 flex flex-col space-y-4 hidden">
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-3">
+          <span class="text-xs font-bold uppercase tracking-wide text-slate-300 block">Spin Engine Rules</span>
+          
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-xs text-slate-300">Eliminate Winner (Non-Repeat)</span>
+            <input type="checkbox" id="eliminateWinner" class="rounded bg-slate-800 border-slate-600 text-orange-500 focus:ring-0">
+          </label>
+
+          <label class="flex items-center justify-between cursor-pointer">
+            <span class="text-xs text-slate-300">Audio Sound Effects</span>
+            <input type="checkbox" id="audioToggle" checked class="rounded bg-slate-800 border-slate-600 text-orange-500 focus:ring-0">
+          </label>
+        </div>
+
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-2">
+          <span class="text-xs font-bold uppercase tracking-wide text-slate-300 block">Room Controls</span>
+          <button onclick="initRoom()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-rotate-right"></i> Regenerate Room PIN
+          </button>
         </div>
       </div>
 
@@ -150,14 +196,14 @@
         <i class="fa-solid fa-crown"></i>
       </div>
       <h3 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-1">We Have A Winner!</h3>
-      <div id="winnerName" class="text-3xl font-extrabold text-amber-300 py-3 mb-6 border-y border-slate-700/60 font-mono break-words">---</div>
+      <div id="winnerName" class="text-3xl font-extrabold text-amber-300 py-3 mb-6 border-y border-slate-700/60 font-serif break-words">---</div>
       <button onclick="closeWinnerModal()" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold py-3 rounded-xl shadow-lg transition">
         Continue
       </button>
     </div>
   </div>
 
-  <!-- QR Code Display Modal -->
+  <!-- QR Code Modal -->
   <div id="qrModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
     <div class="bg-slate-800 border border-slate-700 p-6 rounded-3xl max-w-sm w-full text-center shadow-2xl modal-animate relative">
       <button onclick="closeQRModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
@@ -174,28 +220,25 @@
     </div>
   </div>
 
-  <!-- JavaScript Application Logic -->
+  <!-- JavaScript Logic -->
   <script>
-    // State Variables
     let currentRoomPin = "1001";
-    let roster = ["Alex", "Jordan", "Taylor", "Morgan", "Sam", "Chris", "Pat", "Riley"];
+    let roster = ["Blue", "Dark Azure", "Gray", "Green", "Aqua Blue", "Blue", "Dark Azure", "Gray", "Green", "Aqua Blue"];
     let history = [];
+    let lastGeneratedTeams = [];
     let isSpinning = false;
 
-    // Wheel Physics & Math State
     let startAngle = 0;
     let spinTimeout = null;
     let spinAngleStart = 10;
     let spinTime = 0;
     let spinTimeTotal = 0;
 
-    // Palette Colors
     const colors = [
-      "#F97316", "#F59E0B", "#10B981", "#06B6D4", "#3B82F6",
-      "#6366F1", "#8B5CF6", "#EC4899", "#E11D48", "#84CC16"
+      "#1E2433", "#D97706", "#0F766E", "#4338CA", "#0284C7", "#7C3AED", "#881337"
     ];
+    const orbColors = ["#3B82F6", "#00BFFF", "#FFFFFF", "#22C55E", "#38BDF8", "#3B82F6", "#00BFFF", "#FFFFFF", "#22C55E", "#38BDF8"];
 
-    // DOM Elements
     const canvas = document.getElementById('wheelCanvas');
     const ctx = canvas.getContext('2d');
     const rosterInput = document.getElementById('rosterInput');
@@ -206,8 +249,21 @@
       window.addEventListener('resize', resizeCanvas);
     });
 
+    function switchTab(tabKey) {
+      ['roster', 'teams', 'settings'].forEach(key => {
+        document.getElementById(`tabContent-${key}`).classList.add('hidden');
+        const btn = document.getElementById(`tabBtn-${key}`);
+        btn.classList.remove('bg-indigo-600', 'text-white', 'shadow');
+        btn.classList.add('text-slate-400');
+      });
+
+      document.getElementById(`tabContent-${tabKey}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tabBtn-${tabKey}`);
+      activeBtn.classList.add('bg-indigo-600', 'text-white', 'shadow');
+      activeBtn.classList.remove('text-slate-400');
+    }
+
     function initRoom() {
-      // Generate or retrieve 6-digit Room PIN
       currentRoomPin = Math.floor(100000 + Math.random() * 900000).toString();
       document.getElementById('roomPinDisplay').innerText = currentRoomPin;
       document.getElementById('qrRoomPinLabel').innerText = `PIN: ${currentRoomPin}`;
@@ -219,8 +275,8 @@
     function resizeCanvas() {
       const container = document.getElementById('canvasContainer');
       const size = Math.min(container.clientWidth, container.clientHeight) - 20;
-      canvas.width = Math.max(size, 300);
-      canvas.height = Math.max(size, 300);
+      canvas.width = Math.max(size, 320);
+      canvas.height = Math.max(size, 320);
       drawWheel();
     }
 
@@ -240,15 +296,14 @@
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (roster.length === 0) {
-        // Empty State Rendering
         ctx.save();
         ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.fillStyle = '#334155';
+        ctx.fillStyle = '#1e293b';
         ctx.beginPath();
         ctx.arc(0, 0, canvas.width / 2 - 10, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = '#94A3B8';
-        ctx.font = 'bold 16px sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 16px Georgia, serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('Add names to populate wheel', 0, 0);
@@ -257,59 +312,76 @@
       }
 
       const outsideRadius = canvas.width / 2 - 15;
-      const insideRadius = 40;
+      const insideRadius = 32;
       const arc = (Math.PI * 2) / roster.length;
 
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
 
+      ctx.beginPath();
+      ctx.arc(0, 0, outsideRadius + 3, 0, Math.PI * 2);
+      ctx.fillStyle = "#0c1322";
+      ctx.fill();
+
       for (let i = 0; i < roster.length; i++) {
         const angle = startAngle + i * arc;
         ctx.fillStyle = colors[i % colors.length];
 
-        // Draw Wedge Slice
         ctx.beginPath();
         ctx.arc(0, 0, outsideRadius, angle, angle + arc, false);
         ctx.arc(0, 0, insideRadius, angle + arc, angle, true);
         ctx.fill();
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#0B0F19';
+        ctx.lineWidth = 2.5;
         ctx.stroke();
 
-        // Slice Text Rendering
         ctx.save();
-        ctx.fillStyle = "#ffffff";
+        const textAngle = angle + arc / 2;
+        ctx.rotate(textAngle);
 
-        // Dynamic Font Scaling
-        let fontSize = Math.floor(outsideRadius / (roster.length * 0.4));
-        fontSize = Math.min(Math.max(fontSize, 11), 22);
-        ctx.font = `bold ${fontSize}px sans-serif`;
+        const midRadius = (outsideRadius + insideRadius) / 2 + 10;
+        ctx.fillStyle = "#FFFFFF";
+        let fontSize = Math.floor(outsideRadius / (roster.length * 0.35));
+        fontSize = Math.min(Math.max(fontSize, 12), 20);
+        ctx.font = `bold ${fontSize}px Georgia, serif`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
 
-        // Horizontal Slice Text Placement
-        const textAngle = angle + arc / 2;
-        const textRadius = (outsideRadius + insideRadius) / 2;
-        const textX = Math.cos(textAngle) * textRadius;
-        const textY = Math.sin(textAngle) * textRadius;
+        let label = roster[i];
+        if (label.length > 12) label = label.substring(0, 10) + '..';
+        ctx.fillText(label, midRadius, 0);
 
-        ctx.translate(textX, textY);
-        
-        // Truncate long strings for narrow slices
-        let text = roster[i];
-        if (text.length > 12) text = text.substring(0, 10) + '..';
-        ctx.fillText(text, 0, 0);
+        const orbX = midRadius - (ctx.measureText(label).width / 2) - 14;
+        const orbRadius = Math.max(4, fontSize * 0.38);
+
+        const orbGradient = ctx.createRadialGradient(
+          orbX - orbRadius * 0.3, -orbRadius * 0.3, orbRadius * 0.1,
+          orbX, 0, orbRadius
+        );
+        const mainOrbColor = orbColors[i % orbColors.length];
+        orbGradient.addColorStop(0, '#FFFFFF');
+        orbGradient.addColorStop(0.4, mainOrbColor);
+        orbGradient.addColorStop(1, '#000000');
+
+        ctx.beginPath();
+        ctx.arc(orbX, 0, orbRadius, 0, Math.PI * 2);
+        ctx.fillStyle = orbGradient;
+        ctx.fill();
 
         ctx.restore();
       }
 
-      // Draw Center Hub Cap
       ctx.beginPath();
-      ctx.arc(0, 0, insideRadius, 0, Math.PI * 2, false);
-      ctx.fillStyle = '#0f172a';
+      ctx.arc(0, 0, insideRadius + 4, 0, Math.PI * 2);
+      ctx.fillStyle = '#EAB308';
       ctx.fill();
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 3;
+
+      ctx.beginPath();
+      ctx.arc(0, 0, insideRadius, 0, Math.PI * 2);
+      ctx.fillStyle = '#800000';
+      ctx.fill();
+      ctx.strokeStyle = '#FACC15';
+      ctx.lineWidth = 2.5;
       ctx.stroke();
 
       ctx.restore();
@@ -324,7 +396,6 @@
         return;
       }
       
-      // Dynamic Easing Physics
       const spinProgress = spinTime / spinTimeTotal;
       const easeOut = 1 - Math.pow(1 - spinProgress, 3);
       const angleChange = spinAngleStart * (1 - easeOut);
@@ -339,7 +410,7 @@
       isSpinning = true;
       spinAngleStart = Math.random() * 10 + 15;
       spinTime = 0;
-      spinTimeTotal = Math.random() * 3000 + 10000; // 10 to 13 seconds
+      spinTimeTotal = Math.random() * 3000 + 10000;
       rotateWheel();
     }
 
@@ -347,7 +418,6 @@
       const degrees = (startAngle * 180 / Math.PI) % 360;
       const arcd = 360 / roster.length;
       
-      // Pointer is fixed at top center (270 degrees)
       let index = Math.floor((360 - (degrees % 360) + 270) % 360 / arcd);
       index = (index + roster.length) % roster.length;
 
@@ -355,11 +425,9 @@
       document.getElementById('winnerName').innerText = winner;
       document.getElementById('winnerModal').classList.remove('hidden');
 
-      // Add to Draw Logs
       history.unshift({ name: winner, time: new Date().toLocaleTimeString() });
       renderHistory();
 
-      // Handle Winner Elimination Option
       if (document.getElementById('eliminateWinner').checked) {
         roster.splice(index, 1);
         rosterInput.value = roster.join('\n');
@@ -375,13 +443,13 @@
     function renderHistory() {
       const container = document.getElementById('drawHistoryLog');
       if (history.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-500 italic text-center py-4">No winners drawn yet.</p>`;
+        container.innerHTML = `<p class="text-xs text-slate-500 italic text-center py-3">No winners drawn yet.</p>`;
         return;
       }
 
       container.innerHTML = history.map(item => `
         <div class="flex items-center justify-between bg-slate-800/80 p-2 rounded-lg border border-slate-700/50">
-          <span class="text-xs font-semibold text-amber-300 font-mono">${item.name}</span>
+          <span class="text-xs font-semibold text-amber-300 font-serif">${item.name}</span>
           <span class="text-[10px] text-slate-500">${item.time}</span>
         </div>
       `).join('');
@@ -407,11 +475,37 @@
       drawWheel();
     }
 
+    function generateTeams() {
+      if (roster.length === 0) return;
+      const count = parseInt(document.getElementById('teamCountInput').value) || 3;
+      const shuffled = [...roster].sort(() => Math.random() - 0.5);
+      
+      lastGeneratedTeams = Array.from({ length: count }, () => []);
+      shuffled.forEach((name, idx) => {
+        lastGeneratedTeams[idx % count].push(name);
+      });
+
+      const container = document.getElementById('teamsContainer');
+      container.innerHTML = lastGeneratedTeams.map((team, idx) => `
+        <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl">
+          <span class="text-xs font-bold text-indigo-400 block mb-1">Team ${idx + 1} (${team.length})</span>
+          <p class="text-xs text-slate-300 leading-relaxed font-serif">${team.join(', ')}</p>
+        </div>
+      `).join('');
+    }
+
+    function copyTeamsToClipboard() {
+      if (lastGeneratedTeams.length === 0) return;
+      const formatted = lastGeneratedTeams.map((team, idx) => `Team ${idx + 1}:\n${team.join('\n')}`).join('\n\n');
+      navigator.clipboard.writeText(formatted).then(() => {
+        alert('Teams copied to clipboard!');
+      });
+    }
+
     function openQRModal() {
       const qrContainer = document.getElementById('qrcode');
       qrContainer.innerHTML = '';
       
-      // Formulate Target URL pointing strictly to submit.html
       let baseUrl = window.location.href.split('?')[0].split('#')[0];
       if (baseUrl.endsWith('/index.html')) {
         baseUrl = baseUrl.replace('/index.html', '/submit.html');
@@ -441,5 +535,3 @@
   </script>
 </body>
 </html>
-
-```
