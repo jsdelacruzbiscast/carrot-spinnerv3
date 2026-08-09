@@ -76,7 +76,7 @@
   <!-- Main Grid Workspace -->
   <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-[1920px] w-full mx-auto">
 
-    <!-- COLUMN 1: Large Spinner Wheel Stage (~72% width on desktop) -->
+    <!-- COLUMN 1: Large Spinner Wheel Stage -->
     <section class="lg:col-span-8 xl:col-span-9 bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[500px]">
       
       <!-- Top Pointer Arrow (Yellow Triangle) -->
@@ -90,7 +90,7 @@
       </div>
     </section>
 
-    <!-- COLUMN 2: Tabbed Sidebar Workspace (~28% width on desktop) -->
+    <!-- COLUMN 2: Tabbed Sidebar Workspace -->
     <section class="lg:col-span-4 xl:col-span-3 flex flex-col bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4">
       
       <!-- Tab Header Switcher Buttons -->
@@ -124,7 +124,7 @@
           </button>
         </div>
 
-        <!-- Draw History Log Inside Roster Tab -->
+        <!-- Draw History Log -->
         <div class="flex-1 flex flex-col pt-2 border-t border-slate-700/60">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-bold uppercase tracking-wide text-amber-400 flex items-center gap-1">
@@ -179,6 +179,12 @@
         </div>
 
         <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-2">
+          <span class="text-xs font-bold uppercase tracking-wide text-slate-300 block">API Configuration</span>
+          <label class="block text-[10px] text-slate-400">Google Apps Script Endpoint URL</label>
+          <input type="text" id="endpointInput" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-indigo-500" onchange="updateEndpoint(this.value)">
+        </div>
+
+        <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-2">
           <span class="text-xs font-bold uppercase tracking-wide text-slate-300 block">Room Controls</span>
           <button onclick="initRoom()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
             <i class="fa-solid fa-rotate-right"></i> Regenerate Room PIN
@@ -222,11 +228,19 @@
 
   <!-- JavaScript Logic -->
   <script>
+    // Configuration Object containing Backend Execution Endpoint
+    const CONFIG = {
+      ENDPOINT: "https://script.google.com/macros/s/AKfycby_6xYp8WFW1E_pyPNjs5IINOAn-BkqDzzib9GBg_bC1WCxCIbyiqAmYohXkhIPPYly6g/exec",
+      AUTO_SYNC_INTERVAL: 4000
+    };
+
     let currentRoomPin = "1001";
-    let roster = ["Blue", "Dark Azure", "Gray", "Green", "Aqua Blue", "Blue", "Dark Azure", "Gray", "Green", "Aqua Blue"];
+    let roster = ["Blue", "Dark Azure", "Gray", "Green", "Aqua Blue"];
     let history = [];
     let lastGeneratedTeams = [];
     let isSpinning = false;
+    let isEditingRoster = false;
+    let syncTimer = null;
 
     let startAngle = 0;
     let spinTimeout = null;
@@ -244,10 +258,20 @@
     const rosterInput = document.getElementById('rosterInput');
 
     window.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('endpointInput').value = CONFIG.ENDPOINT;
       initRoom();
       resizeCanvas();
+      startAutoSync();
       window.addEventListener('resize', resizeCanvas);
+
+      // Lock auto-sync polling while actively typing
+      rosterInput.addEventListener('focus', () => { isEditingRoster = true; });
+      rosterInput.addEventListener('blur', () => { isEditingRoster = false; });
     });
+
+    function updateEndpoint(newVal) {
+      CONFIG.ENDPOINT = newVal.trim();
+    }
 
     function switchTab(tabKey) {
       ['roster', 'teams', 'settings'].forEach(key => {
@@ -270,6 +294,28 @@
       rosterInput.value = roster.join('\n');
       updateRosterBadge();
       drawWheel();
+      fetchLiveRoster();
+    }
+
+    function fetchLiveRoster() {
+      if (isSpinning || isEditingRoster || !CONFIG.ENDPOINT) return;
+
+      fetch(`${CONFIG.ENDPOINT}?action=getRoomRoster&pin=${currentRoomPin}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.status === "SUCCESS" && Array.isArray(data.roster) && data.roster.length > 0) {
+            roster = data.roster;
+            rosterInput.value = roster.join('\n');
+            updateRosterBadge();
+            drawWheel();
+          }
+        })
+        .catch(err => console.warn("Auto-sync fetch failed:", err));
+    }
+
+    function startAutoSync() {
+      if (syncTimer) clearInterval(syncTimer);
+      syncTimer = setInterval(fetchLiveRoster, CONFIG.AUTO_SYNC_INTERVAL);
     }
 
     function resizeCanvas() {
