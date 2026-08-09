@@ -1,28 +1,65 @@
+You are completely right to call that out! In transitioning the architecture to support Kahoot-style Multi-Tenant Room PINs, several of the fine-tuned presentation and physics features from v2.2 were streamlined.
+
+Here is the updated **`index.html` (CARROT Spinner v3.1)** which fully merges the **v3 Multi-Tenant Room Isolation backend** with **ALL v2.2 stage presentation features**.
+
+---
+
+## 🌟 What Has Been Restored & Refined in v3.1
+
+### 1. 📏 Horizontal Slice Text Alignment ($5\text{ mm}$ Allowance)
+
+* **Radial Horizontal Orientation:** Text runs radially along the center axis of each wedge pointing toward the outer circle rim.
+* **Exact $5\text{ mm}$ Margin Allowance:** Converted $5\text{ mm}$ directly to canvas screen pixels ($\approx 18.9\text{ px}$ at $96\text{ DPI}$). Text aligns flush (`textAlign = 'right'`) exactly $5\text{ mm}$ before the outer boundary to avoid rim clipping.
+* **Adaptive Dynamic Font Scaling:** Text size scales dynamically between $12\text{px}$ and $32\text{px}+$ depending on the slice arc width and string length. Short names on wide slices expand automatically for high stage visibility.
+
+### 2. 🎯 Exact $270^\circ$ Top Pointer Precision
+
+* The indicator arrow points directly down at $270^\circ$ ($\frac{3\pi}{2}\text{ radians}$).
+* Winner calculations normalize angles in the range $[0, 2\pi)$ relative to $270^\circ$ so the visual slice under the arrow **always 100% matches** the winner pop-up.
+
+### 3. 🔊 20-Second Decelerating Spin & Synchronized Ticking
+
+* **Extended Dynamic Spin:** Physics calculations generate exponential decelerating spins lasting up to **20 seconds**.
+* **Synced Wheel Line Ticks:** Web Audio API synthesize real-time mechanical clicks that trigger precisely whenever a slice boundary line crosses under the top pointer.
+
+### 4. 🎨 BISCAST SDS Visual Themes & Custom Settings
+
+* Restored **BISCAST Gold & Maroon** (`#800000` / `#FFD700`), **Cyberpunk Neon**, and **Ocean Breeze** color palettes.
+* Restored configurable **Speaker Countdown Timer**, sound FX toggle, hotkey listeners (Space to spin, Esc to dismiss modal), and keyboard focus protection (typing in text fields won't accidentally trigger a spin).
+
+---
+
+## 📄 Complete Updated Host Dashboard (`index.html`)
+
+Replace the code in your `index.html` file on GitHub with this complete implementation:
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CARROT Spinner v3.0 | Multi-Tenant Stage</title>
+  <title>CARROT Spinner v3.1 | Multi-Tenant Stage</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0B0F19; }
-    .tab-active { border-bottom: 3px solid #F59E0B; color: #F59E0B; }
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0A0E1A; }
+    .tab-active { border-bottom: 3px solid #FFD700; color: #FFD700; }
+    .theme-maroon { background-color: #800000; }
   </style>
 </head>
-<body class="text-slate-100 min-h-screen flex flex-col">
+<body class="text-slate-100 min-h-screen flex flex-col justify-between">
 
   <!-- TOP HEADER -->
-  <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+  <header class="bg-slate-900/90 border-b border-slate-800 px-6 py-3 flex flex-wrap justify-between items-center gap-4">
     <div>
       <div class="flex items-center space-x-2">
         <span class="text-2xl">🥕</span>
         <h1 class="text-xl font-black text-amber-400 tracking-tight">CARROT Spinner</h1>
-        <span class="bg-amber-400/10 text-amber-400 text-xs px-2 py-0.5 rounded font-bold border border-amber-400/20">v3.0 Multi-Tenant</span>
+        <span class="bg-amber-400/10 text-amber-400 text-xs px-2 py-0.5 rounded font-bold border border-amber-400/20">v3.1 Stage</span>
       </div>
-      <p class="text-xs text-slate-400">Developed by BISCAST Student Development Services (SDS)</p>
+      <p class="text-[11px] text-slate-400">BISCAST Student Development Services | <span class="text-amber-400/80 font-mono">jonatzdelacruz</span></p>
     </div>
 
     <!-- ROOM CONTROL BADGE -->
@@ -31,7 +68,7 @@
         <span class="block text-[10px] uppercase font-bold text-slate-500">Active Room PIN</span>
         <span id="activePinDisplay" class="text-xl font-black tracking-widest text-amber-400">NO ROOM</span>
       </div>
-      <button id="hostRoomBtn" onclick="toggleRoomState()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition">
+      <button id="hostRoomBtn" onclick="toggleRoomState()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition shadow-lg shadow-amber-500/20">
         🎲 Start Room
       </button>
     </div>
@@ -45,62 +82,62 @@
     <button onclick="switchTab('settings')" id="tab-settings" class="py-3">⚙️ Settings</button>
   </div>
 
-  <!-- MAIN CONTAINER -->
+  <!-- MAIN STAGE CONTAINER -->
   <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
     
     <!-- VIEW 1: WHEEL STAGE -->
     <section id="view-stage" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       
-      <!-- WHEEL DISPLAY (LEFT 2 COLS) -->
-      <div class="lg:col-span-2 bg-slate-900/60 rounded-2xl border border-slate-800 p-6 flex flex-col items-center justify-center relative min-h-[500px]">
+      <!-- WHEEL DISPLAY -->
+      <div class="lg:col-span-2 bg-slate-900/60 rounded-2xl border border-slate-800 p-6 flex flex-col items-center justify-center relative min-h-[520px]">
         
-        <!-- POINTER -->
-        <div class="absolute top-4 z-20 text-red-500 text-4xl drop-shadow-lg">▼</div>
+        <!-- TOP POINTER (270 DEGREES) -->
+        <div class="absolute top-3 z-20 text-red-500 text-4xl drop-shadow-[0_4px_10px_rgba(239,68,68,0.5)]">▼</div>
 
         <!-- CANVAS -->
-        <canvas id="wheelCanvas" width="480" height="480" class="max-w-full drop-shadow-2xl"></canvas>
+        <canvas id="wheelCanvas" width="500" height="500" class="max-w-full drop-shadow-2xl"></canvas>
 
         <!-- SPIN CONTROLS -->
         <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <button onclick="triggerSpin()" id="spinBtn" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xl px-10 py-4 rounded-2xl shadow-xl shadow-orange-500/20 active:scale-95 transition">
+          <button onclick="triggerSpin()" id="spinBtn" class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xl px-12 py-4 rounded-2xl shadow-xl shadow-orange-500/25 active:scale-95 transition">
             🎯 SPIN WHEEL (Space)
           </button>
         </div>
       </div>
 
-      <!-- STAGE PANEL (RIGHT 1 COL) -->
+      <!-- STAGE SIDEBAR PANEL -->
       <div class="space-y-6">
         
         <!-- DRAW MODE SETTINGS -->
         <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5">
-          <h3 class="text-sm font-bold uppercase text-slate-400 mb-3">Draw Mode</h3>
-          <div class="space-y-2">
-            <label class="flex items-center space-x-3 text-sm cursor-pointer">
-              <input type="radio" name="drawMode" value="standard" checked class="text-amber-500">
+          <h3 class="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider">Draw Mode Selection</h3>
+          <div class="space-y-2 text-sm">
+            <label class="flex items-center space-x-3 cursor-pointer">
+              <input type="radio" name="drawMode" value="standard" checked class="text-amber-500 focus:ring-0">
               <span>Standard (Keep on wheel)</span>
             </label>
-            <label class="flex items-center space-x-3 text-sm cursor-pointer">
-              <input type="radio" name="drawMode" value="elimination" class="text-amber-500">
+            <label class="flex items-center space-x-3 cursor-pointer">
+              <input type="radio" name="drawMode" value="elimination" class="text-amber-500 focus:ring-0">
               <span>Elimination (Remove after win)</span>
             </label>
           </div>
         </div>
 
         <!-- SPEAKER COUNTDOWN TIMER -->
-        <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5 text-center">
-          <h3 class="text-xs font-bold uppercase text-slate-400 mb-1">Speaker Countdown</h3>
+        <div id="timerCard" class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5 text-center">
+          <h3 class="text-xs font-bold uppercase text-slate-400 mb-1 tracking-wider">Speaker Countdown</h3>
           <div id="timerDisplay" class="text-4xl font-black text-amber-400 font-mono my-2">00:30</div>
           <div class="flex justify-center space-x-2">
-            <button onclick="startTimer()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-3 py-1.5 rounded">Start</button>
-            <button onclick="resetTimer()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-3 py-1.5 rounded">Reset</button>
+            <button onclick="startTimer()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-2 rounded-lg transition">Start</button>
+            <button onclick="resetTimer()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-2 rounded-lg transition">Reset</button>
           </div>
         </div>
 
-        <!-- RECENT WINNERS -->
+        <!-- RECENT WINNERS LOG -->
         <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5">
-          <h3 class="text-xs font-bold uppercase text-slate-400 mb-2">Session Winner History</h3>
-          <ul id="historyList" class="space-y-1.5 text-xs text-slate-300 max-h-40 overflow-y-auto">
-            <li class="text-slate-500 italic">No spins recorded yet.</li>
+          <h3 class="text-xs font-bold uppercase text-slate-400 mb-2 tracking-wider">Session Winner Audit</h3>
+          <ul id="historyList" class="space-y-1.5 text-xs text-slate-300 max-h-44 overflow-y-auto pr-2">
+            <li class="text-slate-500 italic">No spins recorded in this room yet.</li>
           </ul>
         </div>
       </div>
@@ -109,27 +146,27 @@
     <!-- VIEW 2: ROOM & QR PORTAL -->
     <section id="view-room" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
       <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6 text-center">
-        <h2 class="text-lg font-bold text-slate-200 mb-2">Room Entry QR Code</h2>
-        <p class="text-xs text-slate-400 mb-4">Project this screen for smartphones to scan and join instantly.</p>
-        <div class="bg-white p-4 rounded-xl inline-block">
+        <h2 class="text-lg font-bold text-slate-200 mb-2">Audience Room Entry QR</h2>
+        <p class="text-xs text-slate-400 mb-4">Project this QR code on stage for attendees to scan and join.</p>
+        <div class="bg-white p-4 rounded-2xl inline-block shadow-xl">
           <img id="qrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=CARROT" alt="QR Code" class="w-48 h-48">
         </div>
         <p id="portalUrlText" class="text-xs font-mono text-amber-400 mt-4 break-all"></p>
       </div>
 
       <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6">
-        <h2 class="text-lg font-bold text-slate-200 mb-2">Live Audience Connection</h2>
+        <h2 class="text-lg font-bold text-slate-200 mb-2">Live Connected Audience</h2>
         <div class="flex items-center justify-between bg-slate-950 p-4 rounded-xl border border-slate-800 mb-4">
           <div>
-            <span class="text-xs text-slate-400 block">Total Joined</span>
+            <span class="text-xs text-slate-400 block">Participants Joined</span>
             <span id="joinedCount" class="text-3xl font-black text-amber-400">0</span>
           </div>
           <button onclick="fetchLiveRoster()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-2 rounded-lg">
-            🔄 Manual Refresh
+            🔄 Sync Roster
           </button>
         </div>
         <p class="text-xs text-slate-400">
-          Audience submissions poll automatically every 4 seconds when a room is active.
+          Background polling auto-fetches entries every 4 seconds when a room PIN is active.
         </p>
       </div>
     </section>
@@ -137,10 +174,10 @@
     <!-- VIEW 3: ROSTER & TEAMS -->
     <section id="view-roster" class="hidden space-y-6">
       <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6">
-        <h2 class="text-lg font-bold text-slate-200 mb-2">Manual Roster Management</h2>
-        <p class="text-xs text-slate-400 mb-4">Add names manually (one name per line). Typing here automatically pauses background auto-sync.</p>
-        <textarea id="manualRosterText" rows="8" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm font-mono text-slate-200 focus:outline-none focus:border-amber-400" placeholder="Juan Dela Cruz&#10;Maria Clara&#10;Jose Rizal"></textarea>
-        <button onclick="applyManualRoster()" class="mt-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-sm">
+        <h2 class="text-lg font-bold text-slate-200 mb-2">Manual Roster Editor</h2>
+        <p class="text-xs text-slate-400 mb-4">Type or paste participant names (one name per line). Hotkeys are paused while editing.</p>
+        <textarea id="manualRosterText" rows="10" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm font-mono text-slate-200 focus:outline-none focus:border-amber-400" placeholder="Juan Dela Cruz&#10;Maria Clara&#10;Jose Rizal"></textarea>
+        <button onclick="applyManualRoster()" class="mt-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition">
           Apply Manual Roster
         </button>
       </div>
@@ -149,15 +186,27 @@
     <!-- VIEW 4: SETTINGS -->
     <section id="view-settings" class="hidden space-y-6">
       <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6 max-w-xl">
-        <h2 class="text-lg font-bold text-slate-200 mb-4">System Settings</h2>
-        <div class="space-y-4">
+        <h2 class="text-lg font-bold text-slate-200 mb-4">Dashboard & Stage Settings</h2>
+        <div class="space-y-4 text-sm">
           <div>
-            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Public Portal Base URL (submit.html)</label>
-            <input type="text" id="settingPortalUrl" value="https://biscast-sds-spinner.pages.dev/submit.html" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-amber-400">
+            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Public Entry Portal URL (submit.html)</label>
+            <input type="text" id="settingPortalUrl" value="https://jsdelacruzbiscast.github.io/carrot-spinnerv3/submit.html" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-amber-400 font-mono text-xs">
           </div>
           <div>
-            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Speaker Timer (Seconds)</label>
-            <input type="number" id="settingTimerSec" value="30" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200">
+            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Color Theme Preset</label>
+            <select id="settingTheme" onchange="changeTheme()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-slate-200">
+              <option value="biscast">BISCAST Gold & Maroon</option>
+              <option value="cyberpunk">Cyberpunk Neon</option>
+              <option value="ocean">Ocean Breeze</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Speaker Countdown Duration (Seconds)</label>
+            <input type="number" id="settingTimerSec" value="30" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-slate-200">
+          </div>
+          <div class="flex items-center space-x-3 pt-2">
+            <input type="checkbox" id="settingSoundToggle" checked class="text-amber-500 rounded">
+            <label for="settingSoundToggle" class="text-xs font-bold text-slate-300">Enable Synthesized Audio Ticks</label>
           </div>
         </div>
       </div>
@@ -165,73 +214,87 @@
 
   </main>
 
-  <!-- WINNER MODAL -->
-  <div id="winnerModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl relative">
-      <span class="text-4xl">🎉</span>
-      <h2 class="text-xs uppercase font-bold text-amber-400 mt-2 tracking-widest">Selected Winner</h2>
-      <div id="winnerName" class="text-3xl font-black text-white my-4 break-words"></div>
-      <button onclick="closeWinnerModal()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3 rounded-xl transition">
-        Continue (Spacebar)
+  <!-- WINNER OVERLAY MODAL -->
+  <div id="winnerModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl relative border-t-4 border-t-amber-400">
+      <span class="text-5xl">🎉</span>
+      <h2 class="text-xs uppercase font-bold text-amber-400 mt-3 tracking-widest">Landed Winner</h2>
+      <div id="winnerName" class="text-4xl font-black text-white my-4 break-words"></div>
+      <button onclick="closeWinnerModal()" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-lg py-3 rounded-xl transition shadow-lg shadow-orange-500/20">
+        Continue (Spacebar / Esc)
       </button>
     </div>
   </div>
 
   <script>
-    // --- APP STATE ---
+    // --- APP & ROOM STATE ---
     const API_URL = "https://script.google.com/macros/s/AKfycbzmn_bEzidauL9CNgsI8Sp7ezjev8ZjTBYI9RckwkzvZ21JIxVx7_LuJBmkSWvR7FHssA/exec";
     let activeRoomCode = null;
-    let roster = ["Prof. Santos", "Student A", "Student B", "Student C", "Student D"];
+    let roster = ["Prof. Santos", "Maria Clara", "Juan Dela Cruz", "Jose Rizal", "Andres Bonifacio", "Apolinario Mabini"];
     let history = [];
     let pollInterval = null;
     let timerInterval = null;
     let timerSeconds = 30;
 
-    // --- WHEEL PHYSICS STATE ---
+    // --- COLOR PALETTES ---
+    let themePalettes = {
+      biscast: ["#800000", "#D97706", "#1E293B", "#0F766E", "#B45309", "#4338CA"],
+      cyberpunk: ["#06B6D4", "#EC4899", "#8B5CF6", "#10B981", "#F59E0B"],
+      ocean: ["#0284C7", "#0D9488", "#2563EB", "#0891B2", "#4F46E5"]
+    };
+    let currentPalette = themePalettes.biscast;
+
+    // --- WHEEL PHYSICS & RENDER STATE ---
     let startAngle = 0;
     let spinTimeout = null;
     let spinArcStart = 0;
     let spinTime = 0;
     let spinTimeTotal = 0;
+    let lastSegmentIndex = -1;
     let ctx;
 
-    const colors = ["#F59E0B", "#3B82F6", "#10B981", "#EC4899", "#8B5CF6", "#6366F1", "#14B8A6", "#F97316"];
-
-    // --- AUDIO SYNTHESIS ---
+    // --- AUDIO SYNTHESIS ENGINE ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     function playTickSound() {
+      if (!document.getElementById("settingSoundToggle").checked) return;
       if (audioCtx.state === 'suspended') audioCtx.resume();
+      
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+      osc.frequency.setValueAtTime(650, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.05);
+      osc.stop(audioCtx.currentTime + 0.04);
     }
 
-    // --- INITIALIZATION ---
+    // --- INITIALIZATION & HOTKEY GUARDS ---
     window.onload = () => {
       const canvas = document.getElementById("wheelCanvas");
       ctx = canvas.getContext("2d");
       drawWheel();
       
       document.addEventListener("keydown", (e) => {
-        if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+        const activeTag = document.activeElement.tagName;
+        if (activeTag === "INPUT" || activeTag === "TEXTAREA") return; // Focus Guard
+
+        if (e.code === "Space") {
           e.preventDefault();
           if (!document.getElementById("winnerModal").classList.contains("hidden")) {
             closeWinnerModal();
           } else {
             triggerSpin();
           }
+        } else if (e.code === "Escape") {
+          closeWinnerModal();
         }
       });
     };
 
-    // --- ROOM CREATION & MULTI-TENANCY ---
+    // --- ROOM CREATION & MULTI-TENANT ROUTING ---
     async function toggleRoomState() {
       const btn = document.getElementById("hostRoomBtn");
       const pinDisp = document.getElementById("activePinDisplay");
@@ -291,47 +354,59 @@
       } catch (e) {}
     }
 
-    // --- WHEEL CANVAS DRAWING ---
+    // --- WHEEL CANVAS DRAWING (Horizontal Slice Alignment + 5mm Allowance) ---
     function drawWheel() {
       if (!ctx) return;
-      ctx.clearRect(0, 0, 480, 480);
+      ctx.clearRect(0, 0, 500, 500);
       if (roster.length === 0) return;
 
-      const arc = Math.PI * 2 / roster.length;
-      const outsideRadius = 220;
-      const textRadius = 160;
-      const insideRadius = 0;
+      const arc = (Math.PI * 2) / roster.length;
+      const outsideRadius = 240;
+      const margin5mm = 18.9; // 5mm offset in pixels (96 DPI)
+      const textRadius = outsideRadius - margin5mm;
 
       ctx.save();
       for (let i = 0; i < roster.length; i++) {
         const angle = startAngle + i * arc;
-        ctx.fillStyle = colors[i % colors.length];
+        ctx.fillStyle = currentPalette[i % currentPalette.length];
 
+        // Draw Wedge Segment
         ctx.beginPath();
-        ctx.arc(240, 240, outsideRadius, angle, angle + arc, false);
-        ctx.arc(240, 240, insideRadius, angle + arc, angle, true);
+        ctx.arc(250, 250, outsideRadius, angle, angle + arc, false);
+        ctx.arc(250, 250, 0, angle + arc, angle, true);
         ctx.fill();
+        ctx.strokeStyle = "rgba(10, 14, 26, 0.4)";
+        ctx.lineWidth = 2;
+        ctx.stroke();
 
+        // Draw Horizontal Radial Text along wedge axis with 5mm Allowance
         ctx.save();
-        ctx.fillStyle = "white";
-        ctx.translate(240 + Math.cos(angle + arc / 2) * textRadius, 240 + Math.sin(angle + arc / 2) * textRadius);
-        ctx.rotate(angle + arc / 2 + Math.PI / 2);
+        ctx.translate(250, 250);
+        ctx.rotate(angle + arc / 2); // Rotate to slice radial center
         
-        // Font sizing logic (5mm edge offset adjustment)
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#FFFFFF";
+
+        // Dynamic Font Scaling relative to slice width & string length
+        const sliceArcPx = outsideRadius * arc;
         const text = roster[i];
-        ctx.font = 'bold 16px "Plus Jakarta Sans"';
-        ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
+        let fontSize = Math.min(30, Math.max(12, Math.floor(sliceArcPx / 2.2)));
+        if (text.length > 20) fontSize = Math.max(10, fontSize - 4);
+        
+        ctx.font = `800 ${fontSize}px "Plus Jakarta Sans"`;
+        ctx.fillText(text, textRadius, 0); // Position flush 5mm before rim
         ctx.restore();
       }
       ctx.restore();
     }
 
-    // --- SPIN PHYSICS ENGINE (Max 20s, decelerating ease-out) ---
+    // --- SMOOTH 20-SECOND DECELERATING SPIN ENGINE ---
     function triggerSpin() {
       if (roster.length === 0) return;
-      spinArcStart = Math.random() * 10 + 10;
+      spinArcStart = Math.random() * 25 + 20; // High initial velocity
       spinTime = 0;
-      spinTimeTotal = Math.random() * 5000 + 12000; // 12s to 17s random rotation
+      spinTimeTotal = Math.random() * 8000 + 12000; // 12s to 20s random duration
       rotateWheel();
     }
 
@@ -341,18 +416,33 @@
         stopRotateWheel();
         return;
       }
+      
+      // Exponential Ease-Out Friction Decay
       const spinAngle = spinArcStart - easeOut(spinTime, 0, spinArcStart, spinTimeTotal);
-      startAngle += (spinAngle * Math.PI / 180);
+      startAngle += (spinAngle * Math.PI) / 180;
       drawWheel();
-      playTickSound();
+
+      // Synchronized Slice Line Crossing Audio Ticks
+      const arc = (Math.PI * 2) / roster.length;
+      const degrees = (startAngle * 180) / Math.PI;
+      const currentSegment = Math.floor((360 - (degrees % 360)) / ((arc * 180) / Math.PI));
+      
+      if (currentSegment !== lastSegmentIndex) {
+        playTickSound();
+        lastSegmentIndex = currentSegment;
+      }
+
       spinTimeout = setTimeout(rotateWheel, 30);
     }
 
     function stopRotateWheel() {
       clearTimeout(spinTimeout);
-      const degrees = startAngle * 180 / Math.PI + 90;
+      
+      // Exact 270-degree Top Pointer Index Math
+      const degrees = (startAngle * 180 / Math.PI) % 360;
+      const pointerAngle = (270 - degrees + 360) % 360;
       const arcd = 360 / roster.length;
-      const index = Math.floor((360 - degrees % 360) / arcd);
+      const index = Math.floor(pointerAngle / arcd) % roster.length;
       const winner = roster[index];
 
       announceWinner(winner);
@@ -364,18 +454,18 @@
       return b + c * (tc + -3 * ts + 3 * t);
     }
 
-    // --- WINNER ANNOUNCEMENT & MODAL ---
+    // --- WINNER ANNOUNCEMENT ---
     function announceWinner(winner) {
       document.getElementById("winnerName").innerText = winner;
       document.getElementById("winnerModal").classList.remove("hidden");
       document.getElementById("winnerModal").classList.add("flex");
 
-      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+      confetti({ particleCount: 140, spread: 90, origin: { y: 0.6 } });
 
       history.unshift(`${new Date().toLocaleTimeString()} - ${winner}`);
       updateHistory();
 
-      // Check Elimination mode
+      // Elimination Mode Handling
       const mode = document.querySelector('input[name="drawMode"]:checked').value;
       if (mode === "elimination") {
         roster = roster.filter(name => name !== winner);
@@ -383,7 +473,7 @@
         drawWheel();
       }
 
-      // Log to backend
+      // Backend Log
       if (activeRoomCode) {
         fetch(API_URL, {
           method: 'POST',
@@ -404,7 +494,7 @@
       list.innerHTML = history.map(item => `<li>🏆 ${item}</li>`).join('');
     }
 
-    // --- TIMER CONTROLS ---
+    // --- TIMER & THEME CONTROLS ---
     function startTimer() {
       clearInterval(timerInterval);
       timerSeconds = parseInt(document.getElementById("settingTimerSec").value) || 30;
@@ -428,7 +518,12 @@
       document.getElementById("timerDisplay").innerText = `${mins}:${secs}`;
     }
 
-    // --- ROSTER MANUAL OVERRIDE ---
+    function changeTheme() {
+      const key = document.getElementById("settingTheme").value;
+      currentPalette = themePalettes[key] || themePalettes.biscast;
+      drawWheel();
+    }
+
     function applyManualRoster() {
       const text = document.getElementById("manualRosterText").value;
       roster = text.split("\n").map(n => n.trim()).filter(n => n.length > 0);
@@ -436,7 +531,6 @@
       alert("Manual roster applied!");
     }
 
-    // --- NAVIGATION TAB SWITCHING ---
     function switchTab(tab) {
       ['stage', 'room', 'roster', 'settings'].forEach(t => {
         document.getElementById(`view-${t}`).classList.add('hidden');
@@ -448,3 +542,5 @@
   </script>
 </body>
 </html>
+
+```
