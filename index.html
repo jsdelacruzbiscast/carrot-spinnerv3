@@ -296,18 +296,34 @@
       drawWheel();
       fetchLiveRoster();
     }
+  function fetchLiveRoster() {
+  if (isSpinning || isEditingRoster || !CONFIG.ENDPOINT) return;
 
-    function fetchLiveRoster() {
-      if (isSpinning || isEditingRoster || !CONFIG.ENDPOINT) return;
+  // Pass currentRoomPin as both 'pin' and 'sheet' to support all Code.gs variations
+  const url = `${CONFIG.ENDPOINT}?action=getRoomRoster&pin=${currentRoomPin}&sheet=${currentRoomPin}`;
 
-      fetch(`${CONFIG.ENDPOINT}?action=getRoomRoster&pin=${currentRoomPin}`)
-        .then(res => res.json())
-        .then(data => {
-          if (data.status === "SUCCESS" && Array.isArray(data.roster) && data.roster.length > 0) {
-            roster = data.roster;
-            rosterInput.value = roster.join('\n');
-            updateRosterBadge();
-            drawWheel();
+  fetch(url)
+    .then(res => res.json())
+    .then(data => {
+      // Check for valid roster response across different backend payload formats
+      let liveNames = [];
+      if (data.status === "SUCCESS" && Array.isArray(data.roster)) {
+        liveNames = data.roster;
+      } else if (data.status === "success" && Array.isArray(data.roster)) {
+        liveNames = data.roster;
+      } else if (Array.isArray(data)) {
+        liveNames = data;
+      }
+
+      if (liveNames.length > 0) {
+        roster = liveNames;
+        rosterInput.value = roster.join('\n');
+        updateRosterBadge();
+        drawWheel();
+      }
+    })
+    .catch(err => console.warn("Auto-sync fetch failed:", err));
+}
           }
         })
         .catch(err => console.warn("Auto-sync fetch failed:", err));
