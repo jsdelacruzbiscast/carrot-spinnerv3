@@ -112,6 +112,7 @@
           <span class="text-xs font-bold uppercase tracking-wide text-slate-300">Audience Roster</span>
           <span id="rosterCountBadge" class="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded-full font-mono">0 Names</span>
         </div>
+        <div id="syncStatus" class="text-[10px] text-slate-500 -mt-2">Not synced yet</div>
 
         <textarea id="rosterInput" rows="6" placeholder="Enter names (one per line)..." class="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none" oninput="updateRosterFromText()"></textarea>
 
@@ -340,21 +341,38 @@
 
     function fetchLiveRoster() {
       if (isSpinning || isEditingRoster || !CONFIG.ENDPOINT) return;
+      const statusEl = document.getElementById('syncStatus');
 
       fetch(`${CONFIG.ENDPOINT}?action=getRoomRoster&pin=${currentRoomPin}`)
         .then(res => res.json())
         .then(data => {
-          if (data.status === "SUCCESS" && Array.isArray(data.roster)) {
-            const incoming = data.roster.filter(name => !eliminatedNames.has(name));
-            if (incoming.length > 0 || data.roster.length === 0) {
-              roster = incoming;
-              rosterInput.value = roster.join('\n');
-              updateRosterBadge();
-              drawWheel();
-            }
+          console.log('[sync] pin=' + currentRoomPin, data);
+          const now = new Date().toLocaleTimeString();
+
+          if (data.status !== "SUCCESS" || !Array.isArray(data.roster)) {
+            statusEl.textContent = `Sync error at ${now}: ${data.message || 'unexpected response'}`;
+            statusEl.className = 'text-[10px] text-red-400 -mt-2';
+            return;
           }
+
+          const incoming = data.roster.filter(name => !eliminatedNames.has(name));
+          if (incoming.length > 0 || data.roster.length === 0) {
+            roster = incoming;
+            rosterInput.value = roster.join('\n');
+            updateRosterBadge();
+            drawWheel();
+          }
+
+          statusEl.textContent = data.roster.length === 0
+            ? `Last synced ${now} · Sheet "${currentRoomPin}" has no entries yet`
+            : `Last synced ${now} · ${data.roster.length} name(s) on the sheet`;
+          statusEl.className = 'text-[10px] text-slate-500 -mt-2';
         })
-        .catch(err => console.warn("Auto-sync fetch failed:", err));
+        .catch(err => {
+          console.warn("Auto-sync fetch failed:", err);
+          statusEl.textContent = `Sync failed at ${new Date().toLocaleTimeString()}: check endpoint URL`;
+          statusEl.className = 'text-[10px] text-red-400 -mt-2';
+        });
     }
 
     function startAutoSync() {
