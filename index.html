@@ -3,508 +3,361 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CARROT Spinner v3.1 | Multi-Tenant Stage</title>
+  <title>CARROT Spinner v3.1 - Presenter Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0A0E1A; }
-    .tab-active { border-bottom: 3px solid #FFD700; color: #FFD700; }
-    .theme-maroon { background-color: #800000; }
+    body { background: #0B0F17; color: #F8FAFC; }
+    .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
   </style>
 </head>
-<body class="text-slate-100 min-h-screen flex flex-col justify-between">
+<body class="min-h-screen flex flex-col font-sans">
 
-  <!-- TOP HEADER -->
-  <header class="bg-slate-900/90 border-b border-slate-800 px-6 py-3 flex flex-wrap justify-between items-center gap-4">
-    <div>
-      <div class="flex items-center space-x-2">
-        <span class="text-2xl">🥕</span>
-        <h1 class="text-xl font-black text-amber-400 tracking-tight">CARROT Spinner</h1>
-        <span class="bg-amber-400/10 text-amber-400 text-xs px-2 py-0.5 rounded font-bold border border-amber-400/20">v3.1 Stage</span>
+  <!-- Top Navigation Header -->
+  <header class="glass-card px-6 py-4 flex items-center justify-between border-b border-slate-800">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-gradient-to-tr from-orange-500 to-amber-400 rounded-xl flex items-center justify-center text-xl font-black shadow-lg">
+        🥕
       </div>
-      <p class="text-[11px] text-slate-400">BISCAST Student Development Services | <span class="text-amber-400/80 font-mono">jonatzdelacruz</span></p>
+      <div>
+        <h1 class="text-xl font-extrabold tracking-wide text-white">CARROT Spinner</h1>
+        <p class="text-xs text-slate-400">jonatzdelacruz | v3.1 Stage Edition</p>
+      </div>
     </div>
 
-    <!-- ROOM CONTROL BADGE -->
-    <div class="flex items-center space-x-4 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">
-      <div>
-        <span class="block text-[10px] uppercase font-bold text-slate-500">Active Room PIN</span>
-        <span id="activePinDisplay" class="text-xl font-black tracking-widest text-amber-400">NO ROOM</span>
+    <!-- Active Room Badge -->
+    <div class="flex items-center gap-4">
+      <div class="flex flex-col items-end">
+        <span class="text-xs text-slate-400 uppercase tracking-widest font-semibold">Active Room PIN</span>
+        <span id="activePinDisplay" class="font-mono text-2xl font-black text-orange-400">------</span>
       </div>
-      <button id="hostRoomBtn" onclick="toggleRoomState()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition shadow-lg shadow-amber-500/20">
+      <button id="roomControlBtn" onclick="toggleRoomSession()" class="px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg transition">
         🎲 Start Room
       </button>
     </div>
   </header>
 
-  <!-- NAVIGATION TABS -->
-  <div class="bg-slate-900/50 border-b border-slate-800 px-6 flex space-x-8 text-sm font-bold text-slate-400">
-    <button onclick="switchTab('stage')" id="tab-stage" class="py-3 tab-active">🎯 Wheel Stage</button>
-    <button onclick="switchTab('room')" id="tab-room" class="py-3">📡 Room & QR Portal</button>
-    <button onclick="switchTab('roster')" id="tab-roster" class="py-3">📋 Roster & Teams</button>
-    <button onclick="switchTab('settings')" id="tab-settings" class="py-3">⚙️ Settings</button>
-  </div>
-
-  <!-- MAIN STAGE CONTAINER -->
-  <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
+  <!-- Main Stage Workspace -->
+  <main class="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 p-6 max-w-7xl mx-auto w-full">
     
-    <!-- VIEW 1: WHEEL STAGE -->
-    <section id="view-stage" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Wheel Display (Canvas) -->
+    <div class="lg:col-span-2 glass-card rounded-2xl p-6 flex flex-col items-center justify-center relative min-h-[500px]">
       
-      <!-- WHEEL DISPLAY -->
-      <div class="lg:col-span-2 bg-slate-900/60 rounded-2xl border border-slate-800 p-6 flex flex-col items-center justify-center relative min-h-[520px]">
-        
-        <!-- TOP POINTER (270 DEGREES) -->
-        <div class="absolute top-3 z-20 text-red-500 text-4xl drop-shadow-[0_4px_10px_rgba(239,68,68,0.5)]">▼</div>
+      <!-- Top Center Pointer Marker -->
+      <div class="absolute top-4 z-20 w-0 h-0 border-l-[18px] border-l-transparent border-r-[18px] border-r-transparent border-t-[32px] border-t-orange-500 drop-shadow-lg"></div>
 
-        <!-- CANVAS -->
-        <canvas id="wheelCanvas" width="500" height="500" class="max-w-full drop-shadow-2xl"></canvas>
+      <!-- Wheel Canvas -->
+      <canvas id="wheelCanvas" width="500" height="500" class="max-w-full h-auto drop-shadow-2xl"></canvas>
 
-        <!-- SPIN CONTROLS -->
-        <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
-          <button onclick="triggerSpin()" id="spinBtn" class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xl px-12 py-4 rounded-2xl shadow-xl shadow-orange-500/25 active:scale-95 transition">
-            🎯 SPIN WHEEL (Space)
-          </button>
-        </div>
-      </div>
-
-      <!-- STAGE SIDEBAR PANEL -->
-      <div class="space-y-6">
-        
-        <!-- DRAW MODE SETTINGS -->
-        <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5">
-          <h3 class="text-xs font-bold uppercase text-slate-400 mb-3 tracking-wider">Draw Mode Selection</h3>
-          <div class="space-y-2 text-sm">
-            <label class="flex items-center space-x-3 cursor-pointer">
-              <input type="radio" name="drawMode" value="standard" checked class="text-amber-500 focus:ring-0">
-              <span>Standard (Keep on wheel)</span>
-            </label>
-            <label class="flex items-center space-x-3 cursor-pointer">
-              <input type="radio" name="drawMode" value="elimination" class="text-amber-500 focus:ring-0">
-              <span>Elimination (Remove after win)</span>
-            </label>
-          </div>
-        </div>
-
-        <!-- SPEAKER COUNTDOWN TIMER -->
-        <div id="timerCard" class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5 text-center">
-          <h3 class="text-xs font-bold uppercase text-slate-400 mb-1 tracking-wider">Speaker Countdown</h3>
-          <div id="timerDisplay" class="text-4xl font-black text-amber-400 font-mono my-2">00:30</div>
-          <div class="flex justify-center space-x-2">
-            <button onclick="startTimer()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-2 rounded-lg transition">Start</button>
-            <button onclick="resetTimer()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-2 rounded-lg transition">Reset</button>
-          </div>
-        </div>
-
-        <!-- RECENT WINNERS LOG -->
-        <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5">
-          <h3 class="text-xs font-bold uppercase text-slate-400 mb-2 tracking-wider">Session Winner Audit</h3>
-          <ul id="historyList" class="space-y-1.5 text-xs text-slate-300 max-h-44 overflow-y-auto pr-2">
-            <li class="text-slate-500 italic">No spins recorded in this room yet.</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- VIEW 2: ROOM & QR PORTAL -->
-    <section id="view-room" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6 text-center">
-        <h2 class="text-lg font-bold text-slate-200 mb-2">Audience Room Entry QR</h2>
-        <p class="text-xs text-slate-400 mb-4">Project this QR code on stage for attendees to scan and join.</p>
-        <div class="bg-white p-4 rounded-2xl inline-block shadow-xl">
-          <img id="qrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=CARROT" alt="QR Code" class="w-48 h-48">
-        </div>
-        <p id="portalUrlText" class="text-xs font-mono text-amber-400 mt-4 break-all"></p>
-      </div>
-
-      <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6">
-        <h2 class="text-lg font-bold text-slate-200 mb-2">Live Connected Audience</h2>
-        <div class="flex items-center justify-between bg-slate-950 p-4 rounded-xl border border-slate-800 mb-4">
-          <div>
-            <span class="text-xs text-slate-400 block">Participants Joined</span>
-            <span id="joinedCount" class="text-3xl font-black text-amber-400">0</span>
-          </div>
-          <button onclick="fetchLiveRoster()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-2 rounded-lg">
-            🔄 Sync Roster
-          </button>
-        </div>
-        <p class="text-xs text-slate-400">
-          Background polling auto-fetches entries every 4 seconds when a room PIN is active.
-        </p>
-      </div>
-    </section>
-
-    <!-- VIEW 3: ROSTER & TEAMS -->
-    <section id="view-roster" class="hidden space-y-6">
-      <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6">
-        <h2 class="text-lg font-bold text-slate-200 mb-2">Manual Roster Editor</h2>
-        <p class="text-xs text-slate-400 mb-4">Type or paste participant names (one name per line). Hotkeys are paused while editing.</p>
-        <textarea id="manualRosterText" rows="10" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm font-mono text-slate-200 focus:outline-none focus:border-amber-400" placeholder="Juan Dela Cruz&#10;Maria Clara&#10;Jose Rizal"></textarea>
-        <button onclick="applyManualRoster()" class="mt-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-6 py-2.5 rounded-xl text-sm transition">
-          Apply Manual Roster
+      <!-- Spin Controls -->
+      <div class="mt-6 flex items-center gap-4">
+        <button id="spinBtn" onclick="triggerSpin()" class="px-8 py-4 bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white text-lg font-black rounded-2xl shadow-xl transition transform active:scale-95">
+          🎯 SPIN WHEEL
+        </button>
+        <button onclick="resetRoster()" class="px-4 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl border border-slate-700">
+          🔄 Reset
         </button>
       </div>
-    </section>
+    </div>
 
-    <!-- VIEW 4: SETTINGS -->
-    <section id="view-settings" class="hidden space-y-6">
-      <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6 max-w-xl">
-        <h2 class="text-lg font-bold text-slate-200 mb-4">Dashboard & Stage Settings</h2>
-        <div class="space-y-4 text-sm">
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Public Entry Portal URL (submit.html)</label>
-            <input type="text" id="settingPortalUrl" value="https://jsdelacruzbiscast.github.io/carrot-spinnerv3/submit.html" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-amber-400 font-mono text-xs">
-          </div>
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Color Theme Preset</label>
-            <select id="settingTheme" onchange="changeTheme()" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-slate-200">
-              <option value="biscast">BISCAST Gold & Maroon</option>
-              <option value="cyberpunk">Cyberpunk Neon</option>
-              <option value="ocean">Ocean Breeze</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Speaker Countdown Duration (Seconds)</label>
-            <input type="number" id="settingTimerSec" value="30" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-slate-200">
-          </div>
-          <div class="flex items-center space-x-3 pt-2">
-            <input type="checkbox" id="settingSoundToggle" checked class="text-amber-500 rounded">
-            <label for="settingSoundToggle" class="text-xs font-bold text-slate-300">Enable Synthesized Audio Ticks</label>
-          </div>
+    <!-- Roster & Session Controls -->
+    <div class="glass-card rounded-2xl p-6 flex flex-col justify-between space-y-4">
+      <div>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-bold text-white flex items-center gap-2">
+            <span>👥 Roster</span>
+            <span id="rosterCountBadge" class="text-xs bg-slate-800 text-orange-400 border border-slate-700 px-2.5 py-0.5 rounded-full font-mono">0</span>
+          </h2>
+          <span id="pollingStatusBadge" class="text-xs text-slate-500 flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-slate-500"></span> Idle
+          </span>
         </div>
-      </div>
-    </section>
 
+        <textarea id="manualRosterInput" oninput="updateRosterFromTextarea()" rows="12" placeholder="Enter one name per line..." 
+                  class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-orange-500 font-mono"></textarea>
+      </div>
+
+      <div class="text-xs text-slate-400 bg-slate-900/60 p-3 rounded-xl border border-slate-800">
+        💡 <strong>Tip:</strong> Press <kbd class="px-1.5 py-0.5 bg-slate-800 border border-slate-700 rounded text-slate-200 font-mono">Spacebar</kbd> on your keyboard to trigger spins!
+      </div>
+    </div>
   </main>
 
-  <!-- WINNER OVERLAY MODAL -->
-  <div id="winnerModal" class="fixed inset-0 bg-slate-950/85 backdrop-blur-md hidden items-center justify-center p-4 z-50">
-    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl relative border-t-4 border-t-amber-400">
-      <span class="text-5xl">🎉</span>
-      <h2 class="text-xs uppercase font-bold text-amber-400 mt-3 tracking-widest">Landed Winner</h2>
-      <div id="winnerName" class="text-4xl font-black text-white my-4 break-words"></div>
-      <button onclick="closeWinnerModal()" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-lg py-3 rounded-xl transition shadow-lg shadow-orange-500/20">
-        Continue (Spacebar / Esc)
+  <!-- Winner Modal -->
+  <div id="winnerModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-50 p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl relative">
+      <div class="text-5xl mb-2">🎉</div>
+      <h3 class="text-xs font-bold text-orange-400 tracking-widest uppercase">Winner Selected</h3>
+      <h2 id="winnerNameDisplay" class="text-3xl font-black text-white my-4">---</h2>
+      <button onclick="closeWinnerModal()" class="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg">
+        Continue (Spacebar)
       </button>
     </div>
   </div>
 
   <script>
-    // --- APP & ROOM STATE ---
     const API_URL = "https://script.google.com/macros/s/AKfycbzmn_bEzidauL9CNgsI8Sp7ezjev8ZjTBYI9RckwkzvZ21JIxVx7_LuJBmkSWvR7FHssA/exec";
-    let activeRoomCode = null;
-    let roster = ["Prof. Santos", "Maria Clara", "Juan Dela Cruz", "Jose Rizal", "Andres Bonifacio", "Apolinario Mabini"];
-    let history = [];
+
+    let roster = ["Participant 1", "Participant 2", "Participant 3", "Participant 4", "Participant 5", "Participant 6"];
+    let activePin = null;
     let pollInterval = null;
-    let timerInterval = null;
-    let timerSeconds = 30;
+    let isSpinning = false;
+    let currentAngle = 0;
+    let audioCtx = null;
 
-    // --- COLOR PALETTES ---
-    let themePalettes = {
-      biscast: ["#800000", "#D97706", "#1E293B", "#0F766E", "#B45309", "#4338CA"],
-      cyberpunk: ["#06B6D4", "#EC4899", "#8B5CF6", "#10B981", "#F59E0B"],
-      ocean: ["#0284C7", "#0D9488", "#2563EB", "#0891B2", "#4F46E5"]
-    };
-    let currentPalette = themePalettes.biscast;
+    const canvas = document.getElementById('wheelCanvas');
+    const ctx = canvas.getContext('2d');
+    const textarea = document.getElementById('manualRosterInput');
 
-    // --- WHEEL PHYSICS & RENDER STATE ---
-    let startAngle = 0;
-    let spinTimeout = null;
-    let spinArcStart = 0;
-    let spinTime = 0;
-    let spinTimeTotal = 0;
-    let lastSegmentIndex = -1;
-    let ctx;
+    // Pre-warm Web Audio API Context on first gesture
+    window.addEventListener('pointerdown', initAudio, { once: true });
+    window.addEventListener('keydown', initAudio, { once: true });
 
-    // --- AUDIO SYNTHESIS ENGINE ---
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+    }
+
     function playTickSound() {
-      if (!document.getElementById("settingSoundToggle").checked) return;
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-      
+      if (!audioCtx) return;
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'triangle';
-      osc.frequency.setValueAtTime(650, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
       osc.connect(gain);
       gain.connect(audioCtx.destination);
       osc.start();
-      osc.stop(audioCtx.currentTime + 0.04);
+      osc.stop(audioCtx.currentTime + 0.05);
     }
 
-    // --- INITIALIZATION & HOTKEY GUARDS ---
-    window.onload = () => {
-      const canvas = document.getElementById("wheelCanvas");
-      ctx = canvas.getContext("2d");
-      drawWheel();
-      
-      document.addEventListener("keydown", (e) => {
-        const activeTag = document.activeElement.tagName;
-        if (activeTag === "INPUT" || activeTag === "TEXTAREA") return; // Focus Guard
+    // Adaptive Polling & Page Visibility Listener
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) {
+        stopPolling();
+      } else if (activePin) {
+        startAdaptivePolling();
+      }
+    });
 
-        if (e.code === "Space") {
-          e.preventDefault();
-          if (!document.getElementById("winnerModal").classList.contains("hidden")) {
-            closeWinnerModal();
-          } else {
-            triggerSpin();
+    function startAdaptivePolling() {
+      stopPolling();
+      updatePollingBadge('Active', 'bg-emerald-500');
+      pollLiveRoster();
+      pollInterval = setInterval(pollLiveRoster, 4000); // 4-second cycle when active tab
+    }
+
+    function stopPolling() {
+      if (pollInterval) clearInterval(pollInterval);
+      updatePollingBadge('Paused', 'bg-slate-500');
+    }
+
+    function updatePollingBadge(text, dotColor) {
+      document.getElementById('pollingStatusBadge').innerHTML = `<span class="w-2 h-2 rounded-full ${dotColor}"></span> ${text}`;
+    }
+
+    async function pollLiveRoster() {
+      if (!activePin || isSpinning) return;
+      try {
+        const res = await fetch(`${API_URL}?action=getRoster&pin=${activePin}`);
+        const data = await res.json();
+        if (data.status === 'SUCCESS' && Array.isArray(data.roster)) {
+          // Merge unique incoming entries
+          const merged = Array.from(new Set([...roster, ...data.roster]));
+          if (merged.length !== roster.length) {
+            roster = merged;
+            syncUI();
           }
-        } else if (e.code === "Escape") {
-          closeWinnerModal();
         }
-      });
-    };
+      } catch (err) {
+        console.warn("Polling request deferred.");
+      }
+    }
 
-    // --- ROOM CREATION & MULTI-TENANT ROUTING ---
-    async function toggleRoomState() {
-      const btn = document.getElementById("hostRoomBtn");
-      const pinDisp = document.getElementById("activePinDisplay");
+    async function toggleRoomSession() {
+      const btn = document.getElementById('roomControlBtn');
+      if (!activePin) {
+        btn.textContent = 'Creating...';
+        btn.disabled = true;
 
-      if (!activeRoomCode) {
-        btn.innerText = "Creating...";
         try {
-          const res = await fetch(API_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-            body: JSON.stringify({ action: 'createRoom', presenter: 'Host' })
-          }).then(r => r.json());
-
-          if (res.success) {
-            activeRoomCode = res.roomCode;
-            pinDisp.innerText = activeRoomCode;
-            btn.innerText = "🔒 Close Room";
-            btn.classList.replace("bg-amber-500", "bg-red-500");
-
-            updateQrPortal();
-            startPolling();
+          const res = await fetch(`${API_URL}?action=createRoom`);
+          const data = await res.json();
+          if (data.status === 'SUCCESS') {
+            activePin = data.pin;
+            document.getElementById('activePinDisplay').textContent = activePin;
+            btn.textContent = '🔒 Lock Room';
+            btn.className = 'px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl shadow-lg transition';
+            startAdaptivePolling();
           }
         } catch (e) {
-          alert("Failed to create room.");
-          btn.innerText = "🎲 Start Room";
+          alert("Failed to initialize room.");
+        } finally {
+          btn.disabled = false;
         }
       } else {
-        clearInterval(pollInterval);
-        activeRoomCode = null;
-        pinDisp.innerText = "NO ROOM";
-        btn.innerText = "🎲 Start Room";
-        btn.classList.replace("bg-red-500", "bg-amber-500");
+        // Lock / Close session
+        activePin = null;
+        stopPolling();
+        document.getElementById('activePinDisplay').textContent = '------';
+        btn.textContent = '🎲 Start Room';
+        btn.className = 'px-5 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-xl shadow-lg transition';
       }
     }
 
-    function updateQrPortal() {
-      const baseUrl = document.getElementById("settingPortalUrl").value.trim();
-      const fullUrl = `${baseUrl}?pin=${activeRoomCode}`;
-      document.getElementById("portalUrlText").innerText = fullUrl;
-      document.getElementById("qrImage").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(fullUrl)}`;
+    function syncUI() {
+      textarea.value = roster.join('\n');
+      document.getElementById('rosterCountBadge').textContent = roster.length;
+      drawWheel();
     }
 
-    function startPolling() {
-      pollInterval = setInterval(fetchLiveRoster, 4000);
+    function updateRosterFromTextarea() {
+      const lines = textarea.value.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+      roster = lines.length > 0 ? lines : ["Participant 1"];
+      document.getElementById('rosterCountBadge').textContent = roster.length;
+      drawWheel();
     }
 
-    async function fetchLiveRoster() {
-      if (!activeRoomCode) return;
-      try {
-        const res = await fetch(`${API_URL}?action=fetchRoster&roomCode=${activeRoomCode}`).then(r => r.json());
-        if (res.success && res.roster.length > 0) {
-          roster = res.roster.map(item => item.name);
-          document.getElementById("joinedCount").innerText = roster.length;
-          document.getElementById("manualRosterText").value = roster.join("\n");
-          drawWheel();
-        }
-      } catch (e) {}
-    }
-
-    // --- WHEEL CANVAS DRAWING (Horizontal Slice Alignment + 5mm Allowance) ---
+    // Dynamic Wheel Drawing Engine
     function drawWheel() {
-      if (!ctx) return;
-      ctx.clearRect(0, 0, 500, 500);
-      if (roster.length === 0) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const N = roster.length;
+      if (N === 0) return;
 
-      const arc = (Math.PI * 2) / roster.length;
-      const outsideRadius = 240;
-      const margin5mm = 18.9; // 5mm offset in pixels (96 DPI)
-      const textRadius = outsideRadius - margin5mm;
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const radius = 220;
+      const sliceAngle = (2 * Math.PI) / N;
 
-      ctx.save();
-      for (let i = 0; i < roster.length; i++) {
-        const angle = startAngle + i * arc;
-        ctx.fillStyle = currentPalette[i % currentPalette.length];
+      const margin5mmInPx = 18.9; // 5mm radial edge margin allowance
+      const colors = ['#F97316', '#3B82F6', '#10B981', '#8B5CF6', '#EC4899', '#F59E0B', '#06B6D4'];
 
-        // Draw Wedge Segment
+      for (let i = 0; i < N; i++) {
+        const start = currentAngle + i * sliceAngle;
+        const end = start + sliceAngle;
+
+        ctx.save();
         ctx.beginPath();
-        ctx.arc(250, 250, outsideRadius, angle, angle + arc, false);
-        ctx.arc(250, 250, 0, angle + arc, angle, true);
+        ctx.moveTo(centerX, centerY);
+        ctx.arc(centerX, centerY, radius, start, end);
+        ctx.fillStyle = colors[i % colors.length];
         ctx.fill();
-        ctx.strokeStyle = "rgba(10, 14, 26, 0.4)";
         ctx.lineWidth = 2;
+        ctx.strokeStyle = '#0F172A';
         ctx.stroke();
 
-        // Draw Horizontal Radial Text along wedge axis with 5mm Allowance
-        ctx.save();
-        ctx.translate(250, 250);
-        ctx.rotate(angle + arc / 2); // Rotate to slice radial center
-        
-        ctx.textAlign = "right";
-        ctx.textBaseline = "middle";
-        ctx.fillStyle = "#FFFFFF";
+        // Dense Roster Text Suppression Logic (N > 60)
+        if (N <= 60) {
+          ctx.translate(centerX, centerY);
+          ctx.rotate(start + sliceAngle / 2);
+          ctx.textAlign = 'right';
+          ctx.fillStyle = '#FFFFFF';
 
-        // Dynamic Font Scaling relative to slice width & string length
-        const sliceArcPx = outsideRadius * arc;
-        const text = roster[i];
-        let fontSize = Math.min(30, Math.max(12, Math.floor(sliceArcPx / 2.2)));
-        if (text.length > 20) fontSize = Math.max(10, fontSize - 4);
-        
-        ctx.font = `800 ${fontSize}px "Plus Jakarta Sans"`;
-        ctx.fillText(text, textRadius, 0); // Position flush 5mm before rim
+          // Font scaling logic
+          let fontSize = Math.max(12, Math.min(24, Math.floor(300 / N)));
+          ctx.font = `bold ${fontSize}px sans-serif`;
+
+          // Position text 5mm (18.9px) from outer rim margin
+          const textX = radius - margin5mmInPx;
+          ctx.fillText(roster[i], textX, fontSize / 3);
+        }
         ctx.restore();
       }
-      ctx.restore();
+
+      // Outer rim ring
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#F97316';
+      ctx.stroke();
     }
 
-    // --- SMOOTH 20-SECOND DECELERATING SPIN ENGINE ---
     function triggerSpin() {
-      if (roster.length === 0) return;
-      spinArcStart = Math.random() * 25 + 20; // High initial velocity
-      spinTime = 0;
-      spinTimeTotal = Math.random() * 8000 + 12000; // 12s to 20s random duration
-      rotateWheel();
-    }
+      if (isSpinning || roster.length === 0) return;
+      isSpinning = true;
 
-    function rotateWheel() {
-      spinTime += 30;
-      if (spinTime >= spinTimeTotal) {
-        stopRotateWheel();
-        return;
-      }
-      
-      // Exponential Ease-Out Friction Decay
-      const spinAngle = spinArcStart - easeOut(spinTime, 0, spinArcStart, spinTimeTotal);
-      startAngle += (spinAngle * Math.PI) / 180;
-      drawWheel();
+      let spinTime = 0;
+      const spinTimeTotal = Math.floor(Math.random() * 5000) + 15000; // 15 to 20 seconds extended spin
+      let startVelocity = Math.random() * 0.4 + 0.5;
 
-      // Synchronized Slice Line Crossing Audio Ticks
-      const arc = (Math.PI * 2) / roster.length;
-      const degrees = (startAngle * 180) / Math.PI;
-      const currentSegment = Math.floor((360 - (degrees % 360)) / ((arc * 180) / Math.PI));
-      
-      if (currentSegment !== lastSegmentIndex) {
-        playTickSound();
-        lastSegmentIndex = currentSegment;
-      }
+      let lastSegmentIndex = -1;
 
-      spinTimeout = setTimeout(rotateWheel, 30);
-    }
+      function rotate() {
+        spinTime += 20;
+        if (spinTime >= spinTimeTotal) {
+          isSpinning = false;
+          announceWinner();
+          return;
+        }
 
-    function stopRotateWheel() {
-      clearTimeout(spinTimeout);
-      
-      // Exact 270-degree Top Pointer Index Math
-      const degrees = (startAngle * 180 / Math.PI) % 360;
-      const pointerAngle = (270 - degrees + 360) % 360;
-      const arcd = 360 / roster.length;
-      const index = Math.floor(pointerAngle / arcd) % roster.length;
-      const winner = roster[index];
+        // Natural decelerating ease-out curve
+        const progress = spinTime / spinTimeTotal;
+        const currentVelocity = startVelocity * Math.pow(1 - progress, 3);
+        currentAngle += currentVelocity;
 
-      announceWinner(winner);
-    }
+        // Sound tick trigger per slice boundary crossover
+        const N = roster.length;
+        const sliceAngle = (2 * Math.PI) / N;
+        const normalizedAngle = (2 * Math.PI - (currentAngle % (2 * Math.PI))) % (2 * Math.PI);
+        const currentSegmentIndex = Math.floor(normalizedAngle / sliceAngle);
 
-    function easeOut(t, b, c, d) {
-      const ts = (t /= d) * t;
-      const tc = ts * t;
-      return b + c * (tc + -3 * ts + 3 * t);
-    }
+        if (currentSegmentIndex !== lastSegmentIndex) {
+          playTickSound();
+          lastSegmentIndex = currentSegmentIndex;
+        }
 
-    // --- WINNER ANNOUNCEMENT ---
-    function announceWinner(winner) {
-      document.getElementById("winnerName").innerText = winner;
-      document.getElementById("winnerModal").classList.remove("hidden");
-      document.getElementById("winnerModal").classList.add("flex");
-
-      confetti({ particleCount: 140, spread: 90, origin: { y: 0.6 } });
-
-      history.unshift(`${new Date().toLocaleTimeString()} - ${winner}`);
-      updateHistory();
-
-      // Elimination Mode Handling
-      const mode = document.querySelector('input[name="drawMode"]:checked').value;
-      if (mode === "elimination") {
-        roster = roster.filter(name => name !== winner);
-        document.getElementById("manualRosterText").value = roster.join("\n");
         drawWheel();
+        requestAnimationFrame(rotate);
       }
 
-      // Backend Log
-      if (activeRoomCode) {
-        fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'logSpin', roomCode: activeRoomCode, winner: winner, mode: mode })
-        });
-      }
+      rotate();
+    }
+
+    function announceWinner() {
+      const N = roster.length;
+      const sliceAngle = (2 * Math.PI) / N;
+      // Top pointer index calculations
+      const adjustedAngle = (3 * Math.PI / 2 - currentAngle) % (2 * Math.PI);
+      const normalizedAngle = (adjustedAngle + 2 * Math.PI) % (2 * Math.PI);
+      const winnerIndex = Math.floor(normalizedAngle / sliceAngle);
+
+      const winnerName = roster[winnerIndex];
+      document.getElementById('winnerNameDisplay').textContent = winnerName;
+      document.getElementById('winnerModal').classList.remove('hidden');
+      document.getElementById('winnerModal').classList.add('flex');
+
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
     }
 
     function closeWinnerModal() {
-      document.getElementById("winnerModal").classList.add("hidden");
-      document.getElementById("winnerModal").classList.remove("flex");
-      startTimer();
+      document.getElementById('winnerModal').classList.add('hidden');
+      document.getElementById('winnerModal').classList.remove('flex');
     }
 
-    function updateHistory() {
-      const list = document.getElementById("historyList");
-      list.innerHTML = history.map(item => `<li>🏆 ${item}</li>`).join('');
+    function resetRoster() {
+      roster = ["Participant 1", "Participant 2", "Participant 3", "Participant 4"];
+      syncUI();
     }
 
-    // --- TIMER & THEME CONTROLS ---
-    function startTimer() {
-      clearInterval(timerInterval);
-      timerSeconds = parseInt(document.getElementById("settingTimerSec").value) || 30;
-      updateTimerDisplay();
-      timerInterval = setInterval(() => {
-        timerSeconds--;
-        updateTimerDisplay();
-        if (timerSeconds <= 0) clearInterval(timerInterval);
-      }, 1000);
-    }
+    // Keyboard Shortcuts
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space' && document.activeElement !== textarea) {
+        e.preventDefault();
+        if (!document.getElementById('winnerModal').classList.contains('hidden')) {
+          closeWinnerModal();
+        } else {
+          triggerSpin();
+        }
+      }
+    });
 
-    function resetTimer() {
-      clearInterval(timerInterval);
-      timerSeconds = parseInt(document.getElementById("settingTimerSec").value) || 30;
-      updateTimerDisplay();
-    }
-
-    function updateTimerDisplay() {
-      const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
-      const secs = (timerSeconds % 60).toString().padStart(2, '0');
-      document.getElementById("timerDisplay").innerText = `${mins}:${secs}`;
-    }
-
-    function changeTheme() {
-      const key = document.getElementById("settingTheme").value;
-      currentPalette = themePalettes[key] || themePalettes.biscast;
-      drawWheel();
-    }
-
-    function applyManualRoster() {
-      const text = document.getElementById("manualRosterText").value;
-      roster = text.split("\n").map(n => n.trim()).filter(n => n.length > 0);
-      drawWheel();
-      alert("Manual roster applied!");
-    }
-
-    function switchTab(tab) {
-      ['stage', 'room', 'roster', 'settings'].forEach(t => {
-        document.getElementById(`view-${t}`).classList.add('hidden');
-        document.getElementById(`tab-${t}`).classList.remove('tab-active');
-      });
-      document.getElementById(`view-${tab}`).classList.remove('hidden');
-      document.getElementById(`tab-${tab}`).classList.add('tab-active');
-    }
+    // Initial load sync
+    syncUI();
   </script>
 </body>
 </html>
-
-```
