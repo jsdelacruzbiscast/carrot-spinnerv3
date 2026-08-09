@@ -1,811 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CARROT Spinner v3.2 - BISCAST SDS</title>
-  
-  <!-- Tailwind CSS & QR Code Generator Library -->
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CARROT Spinner - Join Stage</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-
   <style>
-    :root {
-      --maroon: #800000;
-      --gold: #FFD700;
-      --maroon-dark: #5a0000;
-    }
-
     body {
-      background: linear-gradient(135deg, #2b0000 0%, #1a0000 100%);
+      background: linear-gradient(135deg, #2b0000 0%, #800000 50%, #1a0000 100%);
       color: #ffffff;
-      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
       min-height: 100vh;
-      margin: 0;
-      overflow-x: hidden;
     }
-
-    /* Glassmorphism Card Style */
     .glass-card {
-      background: rgba(128, 0, 0, 0.25);
+      background: rgba(255, 255, 255, 0.08);
       backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 215, 0, 0.2);
-      border-radius: 1rem;
-    }
-
-    .glass-input {
-      background: rgba(0, 0, 0, 0.4);
-      border: 1px solid rgba(255, 215, 0, 0.3);
-      color: #fff;
-    }
-    .glass-input:focus {
-      border-color: var(--gold);
-      outline: none;
-      box-shadow: 0 0 10px rgba(255, 215, 0, 0.4);
-    }
-
-    /* Full-Screen Responsive Wheel Stage Container */
-    .wheel-stage-wrapper {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 100%;
-      height: calc(100vh - 120px);
-      box-sizing: border-box;
-      overflow: hidden;
-      position: relative;
-      padding: 10px;
-    }
-
-    /* Responsive Wheel Canvas */
-    #wheelCanvas {
-      max-width: 100%;
-      max-height: 100%;
-      aspect-ratio: 1 / 1;
-      object-fit: contain;
-      filter: drop-shadow(0 0 15px rgba(0,0,0,0.6));
-    }
-
-    /* Pointer Indicator Indicator */
-    .wheel-pointer {
-      position: absolute;
-      top: 15px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 0;
-      height: 0;
-      border-left: 18px solid transparent;
-      border-right: 18px solid transparent;
-      border-top: 36px solid var(--gold);
-      z-index: 10;
-      filter: drop-shadow(0 4px 6px rgba(0,0,0,0.5));
-    }
-
-    /* Tab Button Navigation */
-    .tab-btn {
-      padding: 0.6rem 1.2rem;
-      border-radius: 0.5rem;
-      font-weight: 600;
-      transition: all 0.2s ease;
-      color: #d1d5db;
-    }
-    .tab-btn.active {
-      background: var(--gold);
-      color: #800000;
-      box-shadow: 0 0 12px rgba(255, 215, 0, 0.4);
-    }
-
-    /* Confetti Canvas Overlay */
-    #confettiCanvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
-      pointer-events: none;
-      z-index: 99;
+      border: 1px solid rgba(255, 215, 0, 0.25);
     }
   </style>
 </head>
-<body class="flex flex-col min-h-screen">
+<body class="flex items-center justify-center p-4">
 
-  <!-- Confetti Canvas -->
-  <canvas id="confettiCanvas"></canvas>
+  <div class="glass-card w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5">
+    <div class="text-center space-y-1">
+      <h1 class="text-2xl font-black tracking-wide text-amber-400">CARROT SPINNER</h1>
+      <p class="text-xs text-amber-200/70">BISCAST Student Development Services</p>
+    </div>
 
-  <!-- Top Header Navigation Bar -->
-  <header class="glass-card m-2 p-3 flex flex-wrap items-center justify-between gap-3 z-20">
-    <div class="flex items-center gap-3">
-      <div class="bg-[var(--gold)] text-[var(--maroon)] font-black text-xl px-3 py-1 rounded-lg shadow">
-        SDS
-      </div>
+    <form id="entryForm" onsubmit="submitParticipant(event)" class="space-y-4">
       <div>
-        <h1 class="font-bold text-lg leading-tight text-[var(--gold)]">CARROT Spinner</h1>
-        <p class="text-xs text-gray-300">BISCAST Student Development Services</p>
+        <label class="block text-xs font-semibold text-amber-200 uppercase mb-1">Room PIN</label>
+        <input type="text" id="inputPin" required placeholder="123456" 
+          class="w-full bg-black/40 border border-amber-500/40 rounded-lg px-4 py-3 text-center text-xl font-mono tracking-widest text-amber-300 focus:outline-none focus:border-amber-400">
       </div>
-    </div>
 
-    <!-- Tab Navigation Controls -->
-    <nav class="flex items-center gap-1 bg-black/40 p-1 rounded-lg">
-      <button onclick="switchTab('stage')" id="tab-stage" class="tab-btn active">🎯 Stage</button>
-      <button onclick="switchTab('roster')" id="tab-roster" class="tab-btn">📋 Roster & Sync</button>
-      <button onclick="switchTab('teams')" id="tab-teams" class="tab-btn">👥 Teams</button>
-      <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn">⚙️ Settings</button>
-    </nav>
-
-    <!-- Room PIN Display & QR Launcher -->
-    <div class="flex items-center gap-2">
-      <div class="text-right">
-        <span class="text-xs text-gray-400 block">ROOM PIN</span>
-        <span id="displayPin" class="font-mono font-bold text-xl text-[var(--gold)]">------</span>
+      <div>
+        <label class="block text-xs font-semibold text-amber-200 uppercase mb-1">Your Full Name</label>
+        <input type="text" id="inputName" required placeholder="e.g. Juan Dela Cruz" 
+          class="w-full bg-black/40 border border-amber-500/40 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-400">
       </div>
-      <button onclick="openQRModal()" class="bg-amber-500 hover:bg-amber-600 text-black font-bold px-3 py-2 rounded-lg text-sm transition">
-        📱 Show QR
+
+      <button type="submit" id="btnSubmit" 
+        class="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-black font-extrabold py-3.5 rounded-lg shadow-lg transition active:scale-[0.98]">
+        Join Spinner Roster
       </button>
-      <button onclick="initRoomSession()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-2 rounded-lg text-sm transition">
-        🔄 New Room
-      </button>
-    </div>
-  </header>
+    </form>
 
-  <!-- MAIN TAB CONTENT CONTAINER -->
-  <main class="flex-1 p-2 flex flex-col">
-
-    <!-- 1. WHEEL STAGE TAB -->
-    <section id="tab-content-stage" class="flex-1 flex flex-col items-center justify-center">
-      <!-- Section Selector & Mode Bar -->
-      <div class="w-full max-w-2xl flex flex-wrap items-center justify-between gap-2 mb-2 px-4">
-        <div class="flex items-center gap-2">
-          <label class="text-xs text-gray-300 font-semibold">SECTION:</label>
-          <select id="sectionSelect" onchange="changeSection()" class="glass-input text-sm px-2 py-1 rounded">
-            <option value="Pangalan">Pangalan (Default)</option>
-          </select>
-        </div>
-
-        <div class="flex items-center gap-4 text-xs">
-          <label class="flex items-center gap-1 cursor-pointer">
-            <input type="checkbox" id="eliminationMode" class="accent-[var(--gold)]" />
-            <span>Eliminate Winner (Non-Repeat)</span>
-          </label>
-        </div>
-      </div>
-
-      <!-- Wheel Stage Wrapper -->
-      <div class="wheel-stage-wrapper">
-        <div class="wheel-pointer"></div>
-        <canvas id="wheelCanvas"></canvas>
-      </div>
-
-      <!-- Spin Button Control -->
-      <div class="mt-2 text-center">
-        <button id="spinBtn" onclick="spinWheel()" class="bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-500 hover:to-yellow-600 text-maroon font-black text-xl px-10 py-3 rounded-full shadow-lg transform hover:scale-105 transition active:scale-95 text-black">
-          SPIN WHEEL [SPACE]
-        </button>
-      </div>
-    </section>
-
-
-    <!-- 2. ROSTER & SYNC TAB -->
-    <section id="tab-content-roster" class="hidden flex-1 max-w-4xl mx-auto w-full p-4 glass-card">
-      <h2 class="text-xl font-bold text-[var(--gold)] mb-4 flex items-center gap-2">
-        <span>📋 Roster Management & Auto-Sync</span>
-      </h2>
-
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Manual Free-Text Entry -->
-        <div class="flex flex-col">
-          <label class="text-sm font-semibold mb-1 text-gray-200">Manual Entry (1 name per line):</label>
-          <textarea id="manualEntries" oninput="pauseAutoSyncWhileTyping()" class="glass-input p-3 rounded-lg flex-1 min-h-[220px] font-mono text-sm" placeholder="Juan Dela Cruz&#10;Maria Santos&#10;Pedro Penduko"></textarea>
-          <button onclick="applyManualRoster()" class="mt-2 bg-amber-500 hover:bg-amber-600 text-black font-bold py-2 px-4 rounded-lg transition">
-            Apply Manual Names
-          </button>
-        </div>
-
-        <!-- Sheet Auto-Sync Control -->
-        <div class="flex flex-col justify-between glass-card p-4">
-          <div>
-            <h3 class="font-bold text-lg text-amber-300 mb-2">Cloud Database Sync</h3>
-            <p class="text-xs text-gray-300 mb-4">
-              Connects to your Google Sheet to pull live participant submissions in real-time.
-            </p>
-
-            <div class="flex items-center justify-between mb-4 bg-black/30 p-3 rounded-lg">
-              <span class="text-sm font-semibold">Enable Live Auto-Sync:</span>
-              <input type="checkbox" id="autoSyncToggle" onchange="toggleAutoSync()" class="w-5 h-5 accent-[var(--gold)]" checked />
-            </div>
-
-            <div class="text-xs text-gray-400">
-              <span>Status: </span>
-              <span id="syncStatus" class="text-emerald-400 font-bold">Connected & Idle</span>
-            </div>
-          </div>
-
-          <div class="mt-4 pt-4 border-t border-gray-700 flex gap-2">
-            <button onclick="fetchLiveRoster()" class="flex-1 bg-emerald-600 hover:bg-emerald-700 font-bold py-2 rounded-lg text-sm transition">
-              🔄 Fetch Live Sheet Now
-            </button>
-            <button onclick="resetRoster()" class="bg-red-800 hover:bg-red-900 font-bold px-4 py-2 rounded-lg text-sm transition">
-              Reset Roster
-            </button>
-          </div>
-        </div>
-      </div>
-    </section>
-
-
-    <!-- 3. TEAM GENERATOR TAB -->
-    <section id="tab-content-teams" class="hidden flex-1 max-w-4xl mx-auto w-full p-4 glass-card">
-      <h2 class="text-xl font-bold text-[var(--gold)] mb-4">👥 Random Breakout Group Generator</h2>
-      
-      <div class="flex items-center gap-4 mb-4">
-        <label class="text-sm">Number of Groups:</label>
-        <input type="number" id="groupCount" min="2" max="20" value="4" class="glass-input w-20 px-3 py-1 rounded text-center font-bold" />
-        <button onclick="generateTeams()" class="bg-amber-500 hover:bg-amber-600 text-black font-bold px-5 py-2 rounded-lg transition">
-          🎲 Shuffle & Generate Teams
-        </button>
-        <button onclick="copyTeamsToClipboard()" class="bg-gray-700 hover:bg-gray-600 font-bold px-4 py-2 rounded-lg text-sm transition">
-          📋 Copy Roster
-        </button>
-      </div>
-
-      <div id="teamsOutput" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-        <!-- Generated group teams appear here -->
-        <p class="text-gray-400 text-sm italic col-span-full">Click "Generate Teams" to randomize current roster into groups.</p>
-      </div>
-    </section>
-
-
-    <!-- 4. SETTINGS TAB -->
-    <section id="tab-content-settings" class="hidden flex-1 max-w-3xl mx-auto w-full p-4 glass-card">
-      <h2 class="text-xl font-bold text-[var(--gold)] mb-4">⚙️ Presentation & System Settings</h2>
-
-      <div class="space-y-4 text-sm">
-        <!-- Timer Settings -->
-        <div class="glass-card p-4">
-          <h3 class="font-bold text-amber-300 mb-2">⏱️ Speaker Presentation Countdown Timer</h3>
-          <div class="flex items-center gap-4">
-            <label class="flex items-center gap-2 cursor-pointer">
-              <input type="checkbox" id="settingTimerEnabled" class="accent-[var(--gold)]" checked />
-              <span>Enable Speaker Timer on Winner Announcement</span>
-            </label>
-            <div class="flex items-center gap-1">
-              <span>Duration (seconds):</span>
-              <input type="number" id="settingTimerSeconds" value="60" min="5" max="600" class="glass-input w-20 px-2 py-1 rounded text-center" />
-            </div>
-          </div>
-        </div>
-
-        <!-- Custom QR Code Base URL -->
-        <div class="glass-card p-4">
-          <h3 class="font-bold text-amber-300 mb-2">📱 Custom Smartphone Portal URL Override</h3>
-          <p class="text-xs text-gray-300 mb-2">Leave blank to default automatically to current host domain path.</p>
-          <input type="text" id="settingQrUrl" placeholder="https://username.github.io/repository/submit.html" class="glass-input w-full p-2 rounded text-xs font-mono" />
-        </div>
-
-        <!-- Audio Settings -->
-        <div class="glass-card p-4">
-          <h3 class="font-bold text-amber-300 mb-2">🔊 Audio & Sound FX</h3>
-          <label class="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" id="settingSoundEnabled" class="accent-[var(--gold)]" checked />
-            <span>Enable Web Audio Spinning Ticks & Victory Fanfare</span>
-          </label>
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-
-  <!-- WINNER POPUP MODAL -->
-  <div id="winnerModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4 z-50">
-    <div class="glass-card max-w-md w-full p-6 text-center border-2 border-[var(--gold)] shadow-2xl transform transition-all">
-      <p class="text-xs font-bold text-amber-400 tracking-widest uppercase">🎉 Winner Selected 🎉</p>
-      <h2 id="winnerName" class="text-3xl font-black text-white my-4 break-words">Participant Name</h2>
-
-      <!-- Integrated Countdown Timer Overlay -->
-      <div id="timerContainer" class="my-4 p-3 bg-black/40 rounded-lg hidden">
-        <span class="text-xs text-gray-300 block">PRESENTATION TIMER</span>
-        <span id="timerDisplay" class="font-mono text-3xl font-bold text-[var(--gold)]">00:60</span>
-      </div>
-
-      <div class="flex justify-center gap-3 mt-6">
-        <button onclick="closeWinnerModal()" class="bg-amber-500 hover:bg-amber-600 text-black font-bold px-6 py-2 rounded-lg transition">
-          Continue
-        </button>
-      </div>
-    </div>
+    <div id="statusMessage" class="hidden text-center text-sm p-3 rounded-lg font-medium"></div>
   </div>
 
-
-  <!-- QR CODE MODAL -->
-  <div id="qrModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center p-4 z-50">
-    <div class="glass-card max-w-sm w-full p-6 text-center border border-[var(--gold)]">
-      <h3 class="text-lg font-bold text-[var(--gold)] mb-2">📱 Scan to Join Room</h3>
-      <p class="text-xs text-gray-300 mb-4">Scan QR code using smartphone camera to enter your name into the live room.</p>
-      
-      <div class="flex justify-center bg-white p-4 rounded-xl mb-4">
-        <div id="qrcode"></div>
-      </div>
-
-      <button onclick="closeQRModal()" class="bg-gray-700 hover:bg-gray-600 font-bold px-5 py-2 rounded-lg text-sm transition">
-        Close
-      </button>
-    </div>
-  </div>
-
-
-  <!-- JAVASCRIPT SYSTEM ENGINE -->
   <script>
-    // System Configuration API Target
     const API_URL = 'https://script.google.com/macros/s/AKfycbyKGHEUW7PzF3mlkQuPDs7j8imrgNi-aTQKLyApPLDCfarpjo_01mNc6kR8area5sM8/exec';
 
-    // Core System Variables
-    let activePin = '';
-    let roster = ["Juan Dela Cruz", "Maria Santos", "Pedro Penduko", "Ana Reyes", "Carlos Garcia", "Elena Torres"];
-    let colors = ['#800000', '#FFD700', '#5a0000', '#d4af37', '#990000', '#e6c200'];
-    
-    // Wheel Geometry & Dynamics
-    let startAngle = 0;
-    let spinTimeout = null;
-    let spinAngleStart = 10;
-    let spinTime = 0;
-    let spinTimeTotal = 0;
-    let outsideRadius = 200;
-    let insideRadius = 40;
-    let textRadius = 160;
-    
-    // Auto-Sync Polling Variable
-    let autoSyncInterval = null;
-    let isTyping = false;
-    let timerInterval = null;
-
-    // Audio Context Setup
-    let audioCtx = null;
-
-    function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-    }
-
-    function playTickSound() {
-      if (!document.getElementById('settingSoundEnabled').checked) return;
-      try {
-        initAudio();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.type = 'triangle';
-        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
-        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
-        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.05);
-      } catch (e) {}
-    }
-
-    function playFanfare() {
-      if (!document.getElementById('settingSoundEnabled').checked) return;
-      try {
-        initAudio();
-        const notes = [523.25, 659.25, 783.99, 1046.50];
-        notes.forEach((freq, idx) => {
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.frequency.value = freq;
-          gain.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.1);
-          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + idx * 0.1 + 0.3);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start(audioCtx.currentTime + idx * 0.1);
-          osc.stop(audioCtx.currentTime + idx * 0.1 + 0.3);
-        });
-      } catch (e) {}
-    }
-
-    // Canvas Dynamic Window Auto-Resizing Engine
-    function resizeCanvas() {
-      const canvas = document.getElementById('wheelCanvas');
-      const container = canvas ? canvas.parentElement : null;
-      if (!container || !canvas) return;
-
-      const containerWidth = container.clientWidth - 20;
-      const containerHeight = container.clientHeight - 20;
-      const size = Math.floor(Math.min(containerWidth, containerHeight));
-
-      canvas.width = size;
-      canvas.height = size;
-
-      outsideRadius = (size / 2) - 15;
-      insideRadius = Math.max(25, Math.floor(size * 0.08));
-      
-      // 5 mm padding (~19 pixels at 96 DPI) offset from outer edge
-      const margin5mm = 19;
-      textRadius = Math.max(10, outsideRadius - margin5mm);
-
-      drawWheel();
-    }
-
-    // Render Wheel Canvas
-    function drawWheel() {
-      const canvas = document.getElementById('wheelCanvas');
-      if (!canvas || !canvas.getContext) return;
-      const ctx = canvas.getContext('2d');
-
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height / 2;
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      if (roster.length === 0) {
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 16px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('No participants in roster', centerX, centerY);
-        return;
-      }
-
-      const arc = Math.PI * 2 / roster.length;
-
-      for (let i = 0; i < roster.length; i++) {
-        const angle = startAngle + i * arc;
-        
-        // Draw Slice
-        ctx.fillStyle = colors[i % colors.length];
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, outsideRadius, angle, angle + arc, false);
-        ctx.arc(centerX, centerY, insideRadius, angle + arc, angle, true);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-
-        // Draw Slice Text (Horizontal Radial Alignment)
-        ctx.save();
-        ctx.fillStyle = (i % 2 === 1) ? '#800000' : '#ffffff';
-        
-        // Dynamic Font Scaling
-        let fontSize = Math.max(10, Math.min(16, Math.floor(outsideRadius * 0.09)));
-        if (roster.length > 40) fontSize = 10;
-        ctx.font = `bold ${fontSize}px sans-serif`;
-
-        // Position text horizontal flush with 5mm edge offset
-        const textAngle = angle + arc / 2;
-        ctx.translate(
-          centerX + Math.cos(textAngle) * textRadius,
-          centerY + Math.sin(textAngle) * textRadius
-        );
-        ctx.rotate(textAngle + Math.PI); // Rotate text radially facing center
-        ctx.textAlign = "left";
-        ctx.textBaseline = "middle";
-
-        let name = roster[i];
-        if (name.length > 20) name = name.substring(0, 18) + '...';
-        ctx.fillText(name, 0, 0);
-        ctx.restore();
-      }
-    }
-
-    // Spin Mechanics
-    let lastSliceIndex = -1;
-
-    function spinWheel() {
-      if (roster.length === 0) return;
-      spinAngleStart = Math.random() * 10 + 15;
-      spinTime = 0;
-      spinTimeTotal = Math.random() * 3000 + 4000;
-      rotateWheel();
-    }
-
-    function rotateWheel() {
-      spinTime += 30;
-      if (spinTime >= spinTimeTotal) {
-        stopRotateWheel();
-        return;
-      }
-      const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
-      startAngle += (spinAngle * Math.PI / 180);
-      drawWheel();
-
-      // Sound Ticking Per Slice
-      const arc = Math.PI * 2 / roster.length;
-      const currentSlice = Math.floor((Math.PI * 2 - (startAngle % (Math.PI * 2))) / arc) % roster.length;
-      if (currentSlice !== lastSliceIndex) {
-        playTickSound();
-        lastSliceIndex = currentSlice;
-      }
-
-      spinTimeout = requestAnimationFrame(rotateWheel);
-    }
-
-    function stopRotateWheel() {
-      cancelAnimationFrame(spinTimeout);
-      const arc = Math.PI * 2 / roster.length;
-      // Wheel Pointer is at 270 degrees (Top)
-      const degrees = startAngle * 180 / Math.PI + 90;
-      const arcd = arc * 180 / Math.PI;
-      const index = Math.floor((360 - (degrees % 360)) / arcd) % roster.length;
-      
-      const winner = roster[index];
-      announceWinner(winner, index);
-    }
-
-    function easeOut(t, b, c, d) {
-      const ts = (t /= d) * t;
-      const tc = ts * t;
-      return b + c * (tc + -3 * ts + 3 * t);
-    }
-
-    // Winner Announcement & Timer Integration
-    function announceWinner(winner, index) {
-      playFanfare();
-      triggerConfetti();
-
-      document.getElementById('winnerName').innerText = winner;
-      
-      // Timer Check
-      const timerEnabled = document.getElementById('settingTimerEnabled').checked;
-      const timerContainer = document.getElementById('timerContainer');
-      
-      if (timerEnabled) {
-        timerContainer.classList.remove('hidden');
-        startSpeakerTimer();
-      } else {
-        timerContainer.classList.add('hidden');
-      }
-
-      document.getElementById('winnerModal').classList.remove('hidden');
-      document.getElementById('winnerModal').classList.add('flex');
-
-      // Elimination Mode
-      if (document.getElementById('eliminationMode').checked) {
-        roster.splice(index, 1);
-        syncManualTextArea();
-        drawWheel();
-      }
-    }
-
-    function startSpeakerTimer() {
-      clearInterval(timerInterval);
-      let secondsLeft = parseInt(document.getElementById('settingTimerSeconds').value) || 60;
-      const display = document.getElementById('timerDisplay');
-
-      function updateDisplay() {
-        const mins = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
-        const secs = (secondsLeft % 60).toString().padStart(2, '0');
-        display.innerText = `${mins}:${secs}`;
-      }
-
-      updateDisplay();
-      timerInterval = setInterval(() => {
-        secondsLeft--;
-        if (secondsLeft <= 0) {
-          clearInterval(timerInterval);
-          display.innerText = "00:00 - TIME UP!";
-        } else {
-          updateDisplay();
-        }
-      }, 1000);
-    }
-
-    function closeWinnerModal() {
-      clearInterval(timerInterval);
-      document.getElementById('winnerModal').classList.add('hidden');
-      document.getElementById('winnerModal').classList.remove('flex');
-    }
-
-    // QR Code Modal with Fixed Target Base URL Resolution
-    function openQRModal() {
-      const modal = document.getElementById('qrModal');
-      const container = document.getElementById('qrcode');
-      if (!modal || !container) return;
-      container.innerHTML = '';
-      
-      let baseUrl = window.location.href.split('?')[0].split('#')[0];
-      if (baseUrl.endsWith('index.html')) {
-        baseUrl = baseUrl.replace(/index\.html$/, 'submit.html');
-      } else if (baseUrl.endsWith('/')) {
-        baseUrl += 'submit.html';
-      } else {
-        baseUrl += '/submit.html';
-      }
-
-      // Check if custom URL override is provided in settings
-      const customQrUrl = document.getElementById('settingQrUrl').value.trim();
-      const targetBase = customQrUrl || baseUrl;
-      const targetUrl = targetBase + (activePin ? `?pin=${activePin}` : '');
-      
-      new QRCode(container, { text: targetUrl, width: 180, height: 180 });
-      
-      modal.classList.remove('hidden');
-      modal.classList.add('flex');
-    }
-
-    function closeQRModal() {
-      document.getElementById('qrModal').classList.add('hidden');
-      document.getElementById('qrModal').classList.remove('flex');
-    }
-
-    // Tab Navigation Switcher
-    function switchTab(tabId) {
-      ['stage', 'roster', 'teams', 'settings'].forEach(id => {
-        document.getElementById(`tab-content-${id}`).classList.add('hidden');
-        document.getElementById(`tab-${id}`).classList.remove('active');
-      });
-      document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
-      document.getElementById(`tab-${tabId}`).classList.add('active');
-
-      if (tabId === 'stage') {
-        setTimeout(resizeCanvas, 50);
-      }
-    }
-
-    // Roster Editing & Sync
-    function syncManualTextArea() {
-      document.getElementById('manualEntries').value = roster.join('\n');
-    }
-
-    function applyManualRoster() {
-      const text = document.getElementById('manualEntries').value;
-      roster = text.split('\n').map(n => n.trim()).filter(n => n.length > 0);
-      drawWheel();
-      alert(`Roster updated! ${roster.length} entries.`);
-    }
-
-    function resetRoster() {
-      if (confirm("Clear current roster?")) {
-        roster = [];
-        syncManualTextArea();
-        drawWheel();
-      }
-    }
-
-    function pauseAutoSyncWhileTyping() {
-      isTyping = true;
-      document.getElementById('autoSyncToggle').checked = false;
-      toggleAutoSync();
-    }
-
-    function toggleAutoSync() {
-      const enabled = document.getElementById('autoSyncToggle').checked;
-      const status = document.getElementById('syncStatus');
-      if (enabled) {
-        status.innerText = "Auto-Sync Active (10s)";
-        status.className = "text-emerald-400 font-bold";
-        if (!autoSyncInterval) autoSyncInterval = setInterval(fetchLiveRoster, 10000);
-      } else {
-        status.innerText = "Auto-Sync Paused";
-        status.className = "text-amber-400 font-bold";
-        clearInterval(autoSyncInterval);
-        autoSyncInterval = null;
-      }
-    }
-
-    async function fetchLiveRoster() {
-      if (!API_URL || API_URL.includes('YOUR_APPS_SCRIPT_ID')) return;
-      try {
-        const section = document.getElementById('sectionSelect').value;
-        const res = await fetch(`${API_URL}?action=getRoster&pin=${activePin}&section=${encodeURIComponent(section)}`);
-        const data = await res.json();
-        if (data.status === 'success' && Array.isArray(data.roster)) {
-          roster = data.roster;
-          syncManualTextArea();
-          drawWheel();
-        }
-      } catch (e) {}
-    }
-
-    async function initRoomSession() {
-      const pin = Math.floor(100000 + Math.random() * 900000).toString();
-      activePin = pin;
-      document.getElementById('displayPin').innerText = pin;
-      try {
-        await fetch(`${API_URL}?action=createRoom&pin=${pin}`);
-      } catch (e) {}
-    }
-
-    // Team Generator Engine (Fisher-Yates Shuffle)
-    function generateTeams() {
-      if (roster.length === 0) return;
-      const count = parseInt(document.getElementById('groupCount').value) || 2;
-      const shuffled = [...roster].sort(() => Math.random() - 0.5);
-      const groups = Array.from({ length: count }, () => []);
-
-      shuffled.forEach((name, i) => {
-        groups[i % count].push(name);
-      });
-
-      const container = document.getElementById('teamsOutput');
-      container.innerHTML = '';
-
-      groups.forEach((group, idx) => {
-        const card = document.createElement('div');
-        card.className = 'glass-card p-3 border-t-2 border-[var(--gold)]';
-        card.innerHTML = `
-          <h4 class="font-bold text-amber-300 text-sm mb-2">Group ${idx + 1} (${group.length})</h4>
-          <ul class="text-xs space-y-1 font-mono">
-            ${group.map(m => `<li class="truncate">• ${m}</li>`).join('')}
-          </ul>
-        `;
-        container.appendChild(card);
-      });
-    }
-
-    function copyTeamsToClipboard() {
-      const container = document.getElementById('teamsOutput');
-      if (!container) return;
-      navigator.clipboard.writeText(container.innerText);
-      alert("Team roster copied to clipboard!");
-    }
-
-    // Confetti Visual Effect
-    function triggerConfetti() {
-      const canvas = document.getElementById('confettiCanvas');
-      const ctx = canvas.getContext('2d');
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-
-      const particles = Array.from({ length: 80 }, () => ({
-        x: canvas.width / 2,
-        y: canvas.height / 2,
-        vx: (Math.random() - 0.5) * 12,
-        vy: (Math.random() - 0.7) * 12,
-        color: colors[Math.floor(Math.random() * colors.length)],
-        size: Math.random() * 8 + 4,
-        life: 100
-      }));
-
-      function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        let active = false;
-
-        particles.forEach(p => {
-          if (p.life > 0) {
-            active = true;
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += 0.2; // Gravity
-            p.life--;
-            ctx.fillStyle = p.color;
-            ctx.fillRect(p.x, p.y, p.size, p.size);
-          }
-        });
-
-        if (active) requestAnimationFrame(animate);
-      }
-      animate();
-    }
-
-    // Hotkey Controls Masking Protection
-    window.addEventListener('keydown', (e) => {
-      // Ignore hotkeys when typing inside inputs or textareas
-      const tag = document.activeElement.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-
-      if (e.code === 'Space') {
-        e.preventDefault();
-        spinWheel();
-      } else if (e.code === 'Escape') {
-        closeWinnerModal();
-        closeQRModal();
-      } else if (e.key.toLowerCase() === 'r') {
-        resetRoster();
-      }
-    });
-
-    // Window Listeners & Initializers
-    window.addEventListener('resize', resizeCanvas);
-    window.addEventListener('pointerdown', initAudio, { once: true });
-
+    // Parse PIN from query parameter automatically
     window.addEventListener('DOMContentLoaded', () => {
-      initRoomSession();
-      syncManualTextArea();
-      resizeCanvas();
-      toggleAutoSync();
+      const urlParams = new URLSearchParams(window.location.search);
+      const pin = urlParams.get('pin');
+      if (pin) {
+        document.getElementById('inputPin').value = pin;
+      }
     });
+
+    async function submitParticipant(e) {
+      e.preventDefault();
+      const pin = document.getElementById('inputPin').value.trim();
+      const name = document.getElementById('inputName').value.trim();
+      const status = document.getElementById('statusMessage');
+      const btn = document.getElementById('btnSubmit');
+
+      if (!pin || !name) return;
+
+      btn.disabled = true;
+      btn.innerText = "Submitting...";
+
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'submitName',
+            pin: pin,
+            name: name,
+            section: 'Pangalan'
+          })
+        });
+
+        const data = await res.json();
+        if (data.status === 'success') {
+          status.className = "text-center text-sm p-3 rounded-lg font-medium bg-emerald-900/60 text-emerald-300 border border-emerald-500/40";
+          status.innerText = "🎉 You're in! Watch the presentation screen.";
+          document.getElementById('inputName').value = '';
+        } else {
+          throw new Error(data.message || 'Submission failed');
+        }
+      } catch (err) {
+        status.className = "text-center text-sm p-3 rounded-lg font-medium bg-rose-900/60 text-rose-300 border border-rose-500/40";
+        status.innerText = "Error: " + err.message;
+      } finally {
+        status.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerText = "Join Spinner Roster";
+      }
+    }
   </script>
 </body>
 </html>
