@@ -3,104 +3,693 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CARROT Spinner - Join Stage</title>
+  <title>CARROT Spinner v3.2 - Host Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
   <style>
+    :root {
+      --maroon: #800000;
+      --gold: #FFD700;
+    }
     body {
-      background: linear-gradient(135deg, #2b0000 0%, #800000 50%, #1a0000 100%);
+      background: linear-gradient(135deg, #2a0000 0%, #5a0000 50%, #1a0000 100%);
       color: #ffffff;
+      font-family: system-ui, -apple-system, sans-serif;
       min-height: 100vh;
+      overflow-x: hidden;
     }
     .glass-card {
-      background: rgba(255, 255, 255, 0.08);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 215, 0, 0.25);
+      background: rgba(255, 255, 255, 0.06);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 215, 0, 0.2);
+    }
+    .nav-btn.active {
+      background: linear-gradient(90deg, var(--maroon), #a00000);
+      border-bottom: 2px solid var(--gold);
+      color: var(--gold);
+    }
+    #wheelCanvas {
+      max-height: calc(100vh - 120px);
+      filter: drop-shadow(0 10px 20px rgba(0,0,0,0.6));
     }
   </style>
 </head>
-<body class="flex items-center justify-center p-4">
+<body class="flex flex-col h-screen">
 
-  <div class="glass-card w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-5">
-    <div class="text-center space-y-1">
-      <h1 class="text-2xl font-black tracking-wide text-amber-400">CARROT SPINNER</h1>
-      <p class="text-xs text-amber-200/70">BISCAST Student Development Services</p>
+  <!-- Top Navigation Header -->
+  <header class="glass-card px-6 py-3 flex items-center justify-between border-b border-amber-500/30">
+    <div class="flex items-center space-x-3">
+      <span class="text-2xl">🥕</span>
+      <div>
+        <h1 class="text-lg font-black tracking-wider text-amber-400">CARROT SPINNER</h1>
+        <p class="text-[10px] text-amber-200/60 uppercase tracking-widest">BISCAST Student Development Services</p>
+      </div>
     </div>
 
-    <form id="entryForm" onsubmit="submitParticipant(event)" class="space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-amber-200 uppercase mb-1">Room PIN</label>
-        <input type="text" id="inputPin" required placeholder="123456" 
-          class="w-full bg-black/40 border border-amber-500/40 rounded-lg px-4 py-3 text-center text-xl font-mono tracking-widest text-amber-300 focus:outline-none focus:border-amber-400">
-      </div>
+    <!-- Tab Switching Controls -->
+    <nav class="flex space-x-1 bg-black/40 p-1 rounded-xl border border-white/10 text-xs font-semibold">
+      <button id="tab-stage" onclick="switchTab('stage')" class="nav-btn active px-4 py-2 rounded-lg transition">🎯 Wheel Stage</button>
+      <button id="tab-roster" onclick="switchTab('roster')" class="nav-btn px-4 py-2 rounded-lg transition">📋 Roster & Sync</button>
+      <button id="tab-teams" onclick="switchTab('teams')" class="nav-btn px-4 py-2 rounded-lg transition">👥 Team Generator</button>
+      <button id="tab-settings" onclick="switchTab('settings')" class="nav-btn px-4 py-2 rounded-lg transition">⚙️ Settings</button>
+    </nav>
 
-      <div>
-        <label class="block text-xs font-semibold text-amber-200 uppercase mb-1">Your Full Name</label>
-        <input type="text" id="inputName" required placeholder="e.g. Juan Dela Cruz" 
-          class="w-full bg-black/40 border border-amber-500/40 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-amber-400">
+    <!-- Room PIN Display & QR Launcher -->
+    <div class="flex items-center space-x-3">
+      <div class="text-right">
+        <span class="block text-[10px] uppercase text-amber-200/60">Room PIN</span>
+        <span id="displayPin" class="font-mono text-lg font-bold text-amber-300">------</span>
       </div>
-
-      <button type="submit" id="btnSubmit" 
-        class="w-full bg-gradient-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-black font-extrabold py-3.5 rounded-lg shadow-lg transition active:scale-[0.98]">
-        Join Spinner Roster
+      <button onclick="openQRModal()" class="bg-amber-500/20 hover:bg-amber-500/30 border border-amber-400/40 p-2 rounded-lg transition text-amber-300 text-xs font-bold">
+        📱 Display QR
       </button>
-    </form>
+    </div>
+  </header>
 
-    <div id="statusMessage" class="hidden text-center text-sm p-3 rounded-lg font-medium"></div>
+  <!-- Main Work Area -->
+  <main class="flex-1 relative overflow-hidden p-4">
+    
+    <!-- TAB 1: WHEEL STAGE -->
+    <section id="tab-content-stage" class="h-full flex items-center justify-center relative">
+      <div class="relative flex items-center justify-center">
+        <!-- Wheel Pointer Arrow -->
+        <div class="absolute -top-4 z-20 text-amber-400 text-4xl filter drop-shadow-md select-none">▼</div>
+        <!-- Main Wheel Canvas -->
+        <canvas id="wheelCanvas" width="500" height="500" class="cursor-pointer" onclick="spinWheel()"></canvas>
+      </div>
+
+      <!-- Quick Spin Floating Action Button -->
+      <button onclick="spinWheel()" class="absolute bottom-6 right-6 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-black font-black text-lg px-8 py-4 rounded-2xl shadow-2xl transition transform active:scale-95">
+        SPIN WHEEL [SPACE]
+      </button>
+    </section>
+
+    <!-- TAB 2: ROSTER MANAGEMENT -->
+    <section id="tab-content-roster" class="hidden h-full max-w-4xl mx-auto space-y-4 overflow-y-auto">
+      <div class="glass-card p-6 rounded-2xl space-y-4">
+        <div class="flex items-center justify-between">
+          <h2 class="text-lg font-bold text-amber-300">Participant Roster Management</h2>
+          <div class="flex items-center space-x-3">
+            <label class="inline-flex items-center cursor-pointer">
+              <input type="checkbox" id="autoSyncToggle" onchange="toggleAutoSync()" class="sr-only peer" checked>
+              <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+              <span class="ml-2 text-xs font-medium text-amber-200" id="syncStatus">Auto-Sync Active (10s)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="flex space-x-4">
+          <div class="w-1/3 space-y-3">
+            <label class="block text-xs font-semibold text-amber-200 uppercase">Sheet Tab / Section</label>
+            <select id="sectionSelect" onchange="fetchLiveRoster()" class="w-full bg-black/50 border border-amber-500/40 rounded-lg px-3 py-2 text-sm text-amber-200">
+              <option value="Pangalan">Pangalan (Default)</option>
+            </select>
+
+            <div class="p-3 bg-black/30 rounded-xl space-y-2 border border-white/5">
+              <label class="inline-flex items-center text-xs text-amber-200">
+                <input type="checkbox" id="eliminationMode" class="rounded bg-black border-amber-500/40 text-amber-500 focus:ring-0 mr-2">
+                Eliminate Winner (Non-Repeat)
+              </label>
+            </div>
+          </div>
+
+          <div class="w-2/3 space-y-2">
+            <label class="block text-xs font-semibold text-amber-200 uppercase">Manual Entry Textarea (One Name Per Line)</label>
+            <textarea id="manualEntries" oninput="pauseAutoSyncWhileTyping()" rows="10" placeholder="Type or paste names here..." 
+              class="w-full bg-black/50 border border-amber-500/40 rounded-xl p-3 text-sm font-mono text-amber-100 focus:outline-none focus:border-amber-400"></textarea>
+            
+            <div class="flex space-x-2">
+              <button onclick="applyManualRoster()" class="bg-amber-500 text-black font-bold text-xs px-4 py-2 rounded-lg hover:bg-amber-400 transition">Apply Textarea Roster</button>
+              <button onclick="resetRoster()" class="bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-500/40 text-xs px-4 py-2 rounded-lg transition">Clear All</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: TEAM GENERATOR -->
+    <section id="tab-content-teams" class="hidden h-full max-w-4xl mx-auto space-y-4 overflow-y-auto">
+      <div class="glass-card p-6 rounded-2xl space-y-4">
+        <h2 class="text-lg font-bold text-amber-300">Breakout Team Partition Engine</h2>
+        <div class="flex items-center space-x-4">
+          <div>
+            <label class="block text-xs text-amber-200 mb-1">Number of Groups</label>
+            <input type="number" id="groupCount" value="3" min="2" max="20" class="bg-black/50 border border-amber-500/40 rounded-lg px-3 py-2 text-center w-24 text-amber-300">
+          </div>
+          <button onclick="generateTeams()" class="mt-5 bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs px-6 py-2.5 rounded-lg transition">
+            Generate Random Teams
+          </button>
+          <button onclick="copyTeamsToClipboard()" class="mt-5 bg-black/40 border border-amber-500/40 hover:bg-black/60 text-amber-300 text-xs px-4 py-2.5 rounded-lg transition">
+            📋 Copy to Clipboard
+          </button>
+        </div>
+        <div id="teamsOutput" class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4"></div>
+      </div>
+    </section>
+
+    <!-- TAB 4: SETTINGS -->
+    <section id="tab-content-settings" class="hidden h-full max-w-2xl mx-auto space-y-4 overflow-y-auto">
+      <div class="glass-card p-6 rounded-2xl space-y-4">
+        <h2 class="text-lg font-bold text-amber-300">Presentation Settings</h2>
+        
+        <div class="space-y-3">
+          <label class="inline-flex items-center text-sm text-amber-200">
+            <input type="checkbox" id="settingSoundEnabled" checked class="rounded bg-black border-amber-500/40 text-amber-500 mr-2">
+            Enable Web Audio Ticks & Victory Fanfare
+          </label>
+
+          <div class="border-t border-white/10 pt-3 space-y-2">
+            <label class="inline-flex items-center text-sm text-amber-200">
+              <input type="checkbox" id="settingTimerEnabled" checked class="rounded bg-black border-amber-500/40 text-amber-500 mr-2">
+              Enable Integrated Speaker Countdown Timer
+            </label>
+            <div class="flex items-center space-x-2 pl-6">
+              <span class="text-xs text-amber-200/80">Timer Duration (Seconds):</span>
+              <input type="number" id="settingTimerSeconds" value="60" min="5" max="600" class="bg-black/50 border border-amber-500/40 rounded px-2 py-1 text-xs w-20 text-center text-amber-300">
+            </div>
+          </div>
+
+          <div class="border-t border-white/10 pt-3">
+            <label class="block text-xs font-semibold text-amber-200 uppercase mb-1">Custom Base QR Redirect URL (Optional)</label>
+            <input type="text" id="settingQrUrl" placeholder="https://yourdomain.com/submit.html" class="w-full bg-black/50 border border-amber-500/40 rounded p-2 text-xs text-amber-100">
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- MODAL: WINNER ANNOUNCEMENT & TIMER -->
+  <div id="winnerModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-50 p-4">
+    <div class="glass-card max-w-md w-full p-8 rounded-3xl text-center space-y-6 border-2 border-amber-400">
+      <div class="text-5xl">🏆</div>
+      <div>
+        <span class="text-xs uppercase tracking-widest text-amber-200/70">Selected Winner</span>
+        <h3 id="winnerName" class="text-3xl font-black text-amber-300 mt-1">---</h3>
+      </div>
+
+      <!-- Integrated Speaker Timer -->
+      <div id="timerContainer" class="hidden p-4 bg-black/50 rounded-2xl border border-amber-500/30">
+        <span class="text-[10px] uppercase tracking-wider text-amber-200/60 block">Speaker Presentation Time</span>
+        <div id="timerDisplay" class="text-4xl font-mono font-bold text-amber-400 mt-1">01:00</div>
+      </div>
+
+      <button onclick="closeWinnerModal()" class="w-full bg-amber-500 hover:bg-amber-400 text-black font-extrabold py-3 rounded-xl transition">
+        Continue Stage
+      </button>
+    </div>
   </div>
 
+  <!-- MODAL: QR CODE DISPLAY -->
+  <div id="qrModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden items-center justify-center z-50 p-4">
+    <div class="glass-card max-w-sm w-full p-6 rounded-3xl text-center space-y-4 border border-amber-400">
+      <h3 class="text-lg font-bold text-amber-300">Scan to Join Roster</h3>
+      <div id="qrcode" class="flex justify-center p-3 bg-white rounded-2xl shadow-inner"></div>
+      <button onclick="closeQRModal()" class="w-full bg-black/40 border border-amber-500/40 hover:bg-black/60 text-amber-200 text-xs py-2.5 rounded-xl transition">
+        Close Window
+      </button>
+    </div>
+  </div>
+
+  <canvas id="confettiCanvas" class="pointer-events-none fixed inset-0 z-40"></canvas>
+
   <script>
+    // System Configuration API Target
     const API_URL = 'https://script.google.com/macros/s/AKfycbyKGHEUW7PzF3mlkQuPDs7j8imrgNi-aTQKLyApPLDCfarpjo_01mNc6kR8area5sM8/exec';
 
-    // Parse PIN from query parameter automatically
-    window.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const pin = urlParams.get('pin');
-      if (pin) {
-        document.getElementById('inputPin').value = pin;
+    // Core System Variables
+    let activePin = '';
+    let roster = ["Juan Dela Cruz", "Maria Santos", "Pedro Penduko", "Ana Reyes", "Carlos Garcia", "Elena Torres"];
+    let colors = ['#800000', '#FFD700', '#5a0000', '#d4af37', '#990000', '#e6c200'];
+
+    // Flags to prevent Auto-Sync from overwriting local state
+    let isManualOverride = false; 
+
+    // Wheel Geometry & Dynamics
+    let startAngle = 0;
+    let spinTimeout = null;
+    let spinAngleStart = 10;
+    let spinTime = 0;
+    let spinTimeTotal = 0;
+    let outsideRadius = 200;
+    let insideRadius = 40;
+    let textRadius = 160;
+
+    // Auto-Sync Polling Variable
+    let autoSyncInterval = null;
+    let timerInterval = null;
+    let audioCtx = null;
+
+    function initAudio() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+    }
+
+    function playTickSound() {
+      if (!document.getElementById('settingSoundEnabled').checked) return;
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(100, audioCtx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.05);
+      } catch (e) {}
+    }
+
+    function playFanfare() {
+      if (!document.getElementById('settingSoundEnabled').checked) return;
+      try {
+        initAudio();
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.frequency.value = freq;
+          gain.gain.setValueAtTime(0.2, audioCtx.currentTime + idx * 0.1);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + idx * 0.1 + 0.3);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(audioCtx.currentTime + idx * 0.1);
+          osc.stop(audioCtx.currentTime + idx * 0.1 + 0.3);
+        });
+      } catch (e) {}
+    }
+
+    // Canvas Dynamic Auto-Resizing Engine
+    function resizeCanvas() {
+      const canvas = document.getElementById('wheelCanvas');
+      const container = canvas ? canvas.parentElement : null;
+      if (!container || !canvas) return;
+
+      const containerWidth = container.clientWidth - 20;
+      const containerHeight = container.clientHeight - 20;
+      const size = Math.floor(Math.min(containerWidth, containerHeight));
+
+      canvas.width = size;
+      canvas.height = size;
+
+      outsideRadius = (size / 2) - 15;
+      insideRadius = Math.max(25, Math.floor(size * 0.08));
+      
+      const margin5mm = 19;
+      textRadius = Math.max(10, outsideRadius - margin5mm);
+
+      drawWheel();
+    }
+
+    // Render Wheel Canvas
+    function drawWheel() {
+      const canvas = document.getElementById('wheelCanvas');
+      if (!canvas || !canvas.getContext) return;
+      const ctx = canvas.getContext('2d');
+
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (roster.length === 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 16px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('No participants in roster', centerX, centerY);
+        return;
+      }
+
+      const arc = Math.PI * 2 / roster.length;
+
+      for (let i = 0; i < roster.length; i++) {
+        const angle = startAngle + i * arc;
+        
+        ctx.fillStyle = colors[i % colors.length];
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, outsideRadius, angle, angle + arc, false);
+        ctx.arc(centerX, centerY, insideRadius, angle + arc, angle, true);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.save();
+        ctx.fillStyle = (i % 2 === 1) ? '#800000' : '#ffffff';
+        
+        let fontSize = Math.max(10, Math.min(16, Math.floor(outsideRadius * 0.09)));
+        if (roster.length > 40) fontSize = 10;
+        ctx.font = `bold ${fontSize}px sans-serif`;
+
+        const textAngle = angle + arc / 2;
+        ctx.translate(
+          centerX + Math.cos(textAngle) * textRadius,
+          centerY + Math.sin(textAngle) * textRadius
+        );
+        ctx.rotate(textAngle + Math.PI);
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+
+        let name = roster[i];
+        if (name.length > 20) name = name.substring(0, 18) + '...';
+        ctx.fillText(name, 0, 0);
+        ctx.restore();
+      }
+    }
+
+    // Spin Mechanics
+    let lastSliceIndex = -1;
+
+    function spinWheel() {
+      if (roster.length === 0) return;
+      spinAngleStart = Math.random() * 10 + 15;
+      spinTime = 0;
+      spinTimeTotal = Math.random() * 3000 + 4000;
+      rotateWheel();
+    }
+
+    function rotateWheel() {
+      spinTime += 30;
+      if (spinTime >= spinTimeTotal) {
+        stopRotateWheel();
+        return;
+      }
+      const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
+      startAngle += (spinAngle * Math.PI / 180);
+      drawWheel();
+
+      const arc = Math.PI * 2 / roster.length;
+      const currentSlice = Math.floor((Math.PI * 2 - (startAngle % (Math.PI * 2))) / arc) % roster.length;
+      if (currentSlice !== lastSliceIndex) {
+        playTickSound();
+        lastSliceIndex = currentSlice;
+      }
+
+      spinTimeout = requestAnimationFrame(rotateWheel);
+    }
+
+    function stopRotateWheel() {
+      cancelAnimationFrame(spinTimeout);
+      const arc = Math.PI * 2 / roster.length;
+      const degrees = startAngle * 180 / Math.PI + 90;
+      const arcd = arc * 180 / Math.PI;
+      const index = Math.floor((360 - (degrees % 360)) / arcd) % roster.length;
+      
+      const winner = roster[index];
+      announceWinner(winner, index);
+    }
+
+    function easeOut(t, b, c, d) {
+      const ts = (t /= d) * t;
+      const tc = ts * t;
+      return b + c * (tc + -3 * ts + 3 * t);
+    }
+
+    // Winner Announcement
+    function announceWinner(winner, index) {
+      playFanfare();
+      triggerConfetti();
+
+      document.getElementById('winnerName').innerText = winner;
+      
+      const timerEnabled = document.getElementById('settingTimerEnabled').checked;
+      const timerContainer = document.getElementById('timerContainer');
+      
+      if (timerEnabled) {
+        timerContainer.classList.remove('hidden');
+        startSpeakerTimer();
+      } else {
+        timerContainer.classList.add('hidden');
+      }
+
+      document.getElementById('winnerModal').classList.remove('hidden');
+      document.getElementById('winnerModal').classList.add('flex');
+
+      // If elimination is active, set manual override flag to block sync restoration
+      if (document.getElementById('eliminationMode').checked) {
+        roster.splice(index, 1);
+        isManualOverride = true; 
+        syncManualTextArea();
+        drawWheel();
+      }
+    }
+
+    function startSpeakerTimer() {
+      clearInterval(timerInterval);
+      let secondsLeft = parseInt(document.getElementById('settingTimerSeconds').value) || 60;
+      const display = document.getElementById('timerDisplay');
+
+      function updateDisplay() {
+        const mins = Math.floor(secondsLeft / 60).toString().padStart(2, '0');
+        const secs = (secondsLeft % 60).toString().padStart(2, '0');
+        display.innerText = `${mins}:${secs}`;
+      }
+
+      updateDisplay();
+      timerInterval = setInterval(() => {
+        secondsLeft--;
+        if (secondsLeft <= 0) {
+          clearInterval(timerInterval);
+          display.innerText = "00:00 - TIME UP!";
+        } else {
+          updateDisplay();
+        }
+      }, 1000);
+    }
+
+    function closeWinnerModal() {
+      clearInterval(timerInterval);
+      document.getElementById('winnerModal').classList.add('hidden');
+      document.getElementById('winnerModal').classList.remove('flex');
+    }
+
+    // Fixed QR Code URL Formatting
+    function openQRModal() {
+      const modal = document.getElementById('qrModal');
+      const container = document.getElementById('qrcode');
+      if (!modal || !container) return;
+      container.innerHTML = '';
+      
+      let baseUrl = window.location.href.split('?')[0].split('#')[0];
+      if (baseUrl.endsWith('index.html')) {
+        baseUrl = baseUrl.replace(/index\.html$/, 'submit.html');
+      } else if (baseUrl.endsWith('/')) {
+        baseUrl += 'submit.html';
+      } else {
+        baseUrl += '/submit.html';
+      }
+
+      const customQrUrl = document.getElementById('settingQrUrl').value.trim();
+      let targetBase = customQrUrl || baseUrl;
+      
+      // Safe Query String Concatenation
+      let targetUrl = targetBase;
+      if (activePin) {
+        const separator = targetBase.includes('?') ? '&' : '?';
+        targetUrl += `${separator}pin=${activePin}`;
+      }
+      
+      new QRCode(container, { text: targetUrl, width: 180, height: 180 });
+      
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function closeQRModal() {
+      document.getElementById('qrModal').classList.add('hidden');
+      document.getElementById('qrModal').classList.remove('flex');
+    }
+
+    function switchTab(tabId) {
+      ['stage', 'roster', 'teams', 'settings'].forEach(id => {
+        document.getElementById(`tab-content-${id}`).classList.add('hidden');
+        document.getElementById(`tab-${id}`).classList.remove('active');
+      });
+      document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
+      document.getElementById(`tab-${tabId}`).classList.add('active');
+
+      if (tabId === 'stage') {
+        setTimeout(resizeCanvas, 50);
+      }
+    }
+
+    function syncManualTextArea() {
+      document.getElementById('manualEntries').value = roster.join('\n');
+    }
+
+    function applyManualRoster() {
+      const text = document.getElementById('manualEntries').value;
+      roster = text.split('\n').map(n => n.trim()).filter(n => n.length > 0);
+      isManualOverride = true; // Lock local roster against auto-sync overwrites
+      
+      // Automatically pause auto-sync toggle visually
+      document.getElementById('autoSyncToggle').checked = false;
+      toggleAutoSync();
+      
+      drawWheel();
+      alert(`Roster updated manually! Auto-sync paused to protect manual edits.`);
+    }
+
+    function resetRoster() {
+      if (confirm("Clear current roster?")) {
+        roster = [];
+        isManualOverride = true;
+        syncManualTextArea();
+        drawWheel();
+      }
+    }
+
+    function pauseAutoSyncWhileTyping() {
+      // Automatically uncheck sync toggle when typing in the textarea
+      if (document.getElementById('autoSyncToggle').checked) {
+        document.getElementById('autoSyncToggle').checked = false;
+        toggleAutoSync();
+      }
+    }
+
+    function toggleAutoSync() {
+      const enabled = document.getElementById('autoSyncToggle').checked;
+      const status = document.getElementById('syncStatus');
+      if (enabled) {
+        isManualOverride = false; // Reset manual lock when user re-enables sync
+        status.innerText = "Auto-Sync Active (10s)";
+        status.className = "text-emerald-400 font-bold";
+        if (!autoSyncInterval) autoSyncInterval = setInterval(fetchLiveRoster, 10000);
+      } else {
+        status.innerText = "Auto-Sync Paused (Manual Control)";
+        status.className = "text-amber-400 font-bold";
+        clearInterval(autoSyncInterval);
+        autoSyncInterval = null;
+      }
+    }
+
+    // Fetch Live Roster with Protection against Overwrites
+    async function fetchLiveRoster() {
+      if (!API_URL || API_URL.includes('YOUR_APPS_SCRIPT_ID') || isManualOverride) return;
+      try {
+        const section = document.getElementById('sectionSelect').value;
+        const res = await fetch(`${API_URL}?action=getRoster&pin=${activePin}&section=${encodeURIComponent(section)}`);
+        const data = await res.json();
+        
+        if (data.status === 'success' && Array.isArray(data.roster)) {
+          // Don't overwrite if manual override was triggered during fetch execution
+          if (!isManualOverride) {
+            roster = data.roster;
+            syncManualTextArea();
+            drawWheel();
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function initRoomSession() {
+      const pin = Math.floor(100000 + Math.random() * 900000).toString();
+      activePin = pin;
+      document.getElementById('displayPin').innerText = pin;
+      try {
+        await fetch(`${API_URL}?action=createRoom&pin=${pin}`);
+      } catch (e) {}
+    }
+
+    function generateTeams() {
+      if (roster.length === 0) return;
+      const count = parseInt(document.getElementById('groupCount').value) || 2;
+      const shuffled = [...roster].sort(() => Math.random() - 0.5);
+      const groups = Array.from({ length: count }, () => []);
+
+      shuffled.forEach((name, i) => {
+        groups[i % count].push(name);
+      });
+
+      const container = document.getElementById('teamsOutput');
+      container.innerHTML = '';
+
+      groups.forEach((group, idx) => {
+        const card = document.createElement('div');
+        card.className = 'glass-card p-3 border-t-2 border-[var(--gold)]';
+        card.innerHTML = `
+          <h4 class="font-bold text-amber-300 text-sm mb-2">Group ${idx + 1} (${group.length})</h4>
+          <ul class="text-xs space-y-1 font-mono">
+            ${group.map(m => `<li class="truncate">• ${m}</li>`).join('')}
+          </ul>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function copyTeamsToClipboard() {
+      const container = document.getElementById('teamsOutput');
+      if (!container) return;
+      navigator.clipboard.writeText(container.innerText);
+      alert("Team roster copied to clipboard!");
+    }
+
+    function triggerConfetti() {
+      const canvas = document.getElementById('confettiCanvas');
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const particles = Array.from({ length: 80 }, () => ({
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+        vx: (Math.random() - 0.5) * 12,
+        vy: (Math.random() - 0.7) * 12,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        size: Math.random() * 8 + 4,
+        life: 100
+      }));
+
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let active = false;
+
+        particles.forEach(p => {
+          if (p.life > 0) {
+            active = true;
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.2;
+            p.life--;
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x, p.y, p.size, p.size);
+          }
+        });
+
+        if (active) requestAnimationFrame(animate);
+      }
+      animate();
+    }
+
+    // Keyboard Protection Engine
+    window.addEventListener('keydown', (e) => {
+      const tag = document.activeElement.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        spinWheel();
+      } else if (e.code === 'Escape') {
+        closeWinnerModal();
+        closeQRModal();
+      } else if (e.key.toLowerCase() === 'r') {
+        resetRoster();
       }
     });
 
-    async function submitParticipant(e) {
-      e.preventDefault();
-      const pin = document.getElementById('inputPin').value.trim();
-      const name = document.getElementById('inputName').value.trim();
-      const status = document.getElementById('statusMessage');
-      const btn = document.getElementById('btnSubmit');
+    window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('pointerdown', initAudio, { once: true });
 
-      if (!pin || !name) return;
-
-      btn.disabled = true;
-      btn.innerText = "Submitting...";
-
-      try {
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'submitName',
-            pin: pin,
-            name: name,
-            section: 'Pangalan'
-          })
-        });
-
-        const data = await res.json();
-        if (data.status === 'success') {
-          status.className = "text-center text-sm p-3 rounded-lg font-medium bg-emerald-900/60 text-emerald-300 border border-emerald-500/40";
-          status.innerText = "🎉 You're in! Watch the presentation screen.";
-          document.getElementById('inputName').value = '';
-        } else {
-          throw new Error(data.message || 'Submission failed');
-        }
-      } catch (err) {
-        status.className = "text-center text-sm p-3 rounded-lg font-medium bg-rose-900/60 text-rose-300 border border-rose-500/40";
-        status.innerText = "Error: " + err.message;
-      } finally {
-        status.classList.remove('hidden');
-        btn.disabled = false;
-        btn.innerText = "Join Spinner Roster";
-      }
-    }
+    window.addEventListener('DOMContentLoaded', () => {
+      initRoomSession();
+      syncManualTextArea();
+      resizeCanvas();
+      toggleAutoSync();
+    });
   </script>
 </body>
 </html>
