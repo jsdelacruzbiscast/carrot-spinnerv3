@@ -10,6 +10,9 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <!-- QRCode.js Library -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Firebase (Realtime Database) - powers instant roster push, replacing polling -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <style>
     /* Custom Scrollbars */
@@ -231,9 +234,18 @@
   <script>
     // Configuration Object containing Backend Execution Endpoint
     const CONFIG = {
-      ENDPOINT: "https://script.google.com/macros/s/AKfycby_6xYp8WFW1E_pyPNjs5IINOAn-BkqDzzib9GBg_bC1WCxCIbyiqAmYohXkhIPPYly6g/exec",
-      AUTO_SYNC_INTERVAL: 4000
+      ENDPOINT: "https://script.google.com/macros/s/AKfycbxxsw9j-0WC46C6GIGHGXoUnfPAm0ftxGia7gKgXrdZLt-9moU29dPm-opSChjwscKKwg/exec"
     };
+
+    // Fill these in from the Firebase console (Project settings > General >
+    // Your apps, and Realtime Database > the URL shown at the top of that page).
+    const FIREBASE_CONFIG = {
+      apiKey: "AIzaSyAraGE0A3t9Hj7LYdHYTvmKpwKA8Mv6XMc",
+      databaseURL: "https://carrot-spinner-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+    firebase.initializeApp(FIREBASE_CONFIG);
+    const firebaseDb = firebase.database();
+    let currentRoomRef = null; // active Firebase listener reference, so we can detach it on PIN change
 
     let currentRoomPin = "1001";
     let roster = ["Blue", "Dark Azure", "Gray", "Green", "Aqua Blue"];
@@ -241,7 +253,6 @@
     let lastGeneratedTeams = [];
     let isSpinning = false;
     let isEditingRoster = false;
-    let syncTimer = null;
     // Names eliminated this room session. Filtered out of every incoming
     // auto-sync roster so a background poll can't resurrect a drawn winner
     // just because their row is still sitting in the Sheet.
@@ -273,7 +284,6 @@
       initRoom(!savedPin, savedPin);
 
       resizeCanvas();
-      startAutoSync();
       window.addEventListener('resize', resizeCanvas);
 
       // Lock auto-sync polling while actively typing
@@ -336,61 +346,42 @@
       rosterInput.value = roster.join('\n');
       updateRosterBadge();
       drawWheel();
-      fetchLiveRoster();
+      attachRoomListener(currentRoomPin);
     }
 
-    function fetchLiveRoster() {
-      if (isSpinning || isEditingRoster || !CONFIG.ENDPOINT) return;
+    /**
+     * Subscribes to rooms/{pin}/roster in Firebase for instant push updates,
+     * replacing the old 4-second polling loop entirely. Firebase fires this
+     * callback immediately with whatever's already there on subscribe, so
+     * there's no need for a separate initial fetch.
+     */
+    function attachRoomListener(pin) {
+      if (currentRoomRef) currentRoomRef.off(); // detach the previous room's listener
+
       const statusEl = document.getElementById('syncStatus');
+      currentRoomRef = firebaseDb.ref(`rooms/${pin}/roster`);
 
-      fetch(`${CONFIG.ENDPOINT}?action=getRoomRoster&pin=${currentRoomPin}`)
-        .then(res => res.json())
-        .then(data => {
-          console.log('[sync] pin=' + currentRoomPin, data);
-          const now = new Date().toLocaleTimeString();
+      currentRoomRef.on('value', (snapshot) => {
+        if (isSpinning || isEditingRoster) return; // don't yank the wheel out from under an active spin or edit
 
-          if (data.status !== "SUCCESS" || !Array.isArray(data.roster)) {
-            statusEl.textContent = `Sync error at ${now}: ${data.message || 'unexpected response'}`;
-            statusEl.className = 'text-[10px] text-red-400 -mt-2';
-            return;
-          }
+        const raw = snapshot.val();
+        const incomingRaw = Array.isArray(raw) ? raw.filter(Boolean) : [];
+        roster = incomingRaw.filter(name => !eliminatedNames.has(name));
+        rosterInput.value = roster.join('\n');
+        updateRosterBadge();
+        drawWheel();
 
-          const incoming = data.roster.filter(name => !eliminatedNames.has(name));
-          if (incoming.length > 0 || data.roster.length === 0) {
-            roster = incoming;
-            rosterInput.value = roster.join('\n');
-            updateRosterBadge();
-            drawWheel();
-          }
-
-          statusEl.textContent = data.roster.length === 0
-            ? `Last synced ${now} · Sheet "${currentRoomPin}" has no entries yet`
-            : `Last synced ${now} · ${data.roster.length} name(s) on the sheet`;
-          statusEl.className = 'text-[10px] text-slate-500 -mt-2';
-        })
-        .catch(err => {
-          console.warn("Auto-sync fetch failed:", err);
-          statusEl.textContent = `Sync failed at ${new Date().toLocaleTimeString()}: check endpoint URL`;
-          statusEl.className = 'text-[10px] text-red-400 -mt-2';
-        });
+        const now = new Date().toLocaleTimeString();
+        statusEl.textContent = incomingRaw.length === 0
+          ? `Live · ${now} · Room "${pin}" has no entries yet`
+          : `Live · ${now} · ${incomingRaw.length} name(s) synced`;
+        statusEl.className = 'text-[10px] text-emerald-400 -mt-2';
+      }, (error) => {
+        console.warn('Firebase listener error:', error);
+        statusEl.textContent = `Live sync error: ${error.message}`;
+        statusEl.className = 'text-[10px] text-red-400 -mt-2';
+      });
     }
-
-    function startAutoSync() {
-      if (syncTimer) clearInterval(syncTimer);
-      syncTimer = setInterval(fetchLiveRoster, CONFIG.AUTO_SYNC_INTERVAL);
-    }
-
-    // Apps Script's free tier caps out around 20,000 requests/day. Stop
-    // polling entirely while this tab isn't visible (e.g. presenter switched
-    // apps) instead of burning quota in the background.
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        if (syncTimer) clearInterval(syncTimer);
-        syncTimer = null;
-      } else if (!syncTimer) {
-        startAutoSync();
-      }
-    });
 
     function resizeCanvas() {
       const container = document.getElementById('canvasContainer');
