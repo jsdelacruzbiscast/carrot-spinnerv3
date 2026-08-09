@@ -50,7 +50,7 @@
         <h1 class="text-2xl font-bold bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
           Carrot Spinner
         </h1>
-        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v3.2</p>
+        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v3.3</p>
       </div>
     </div>
 
@@ -186,7 +186,7 @@
 
         <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-2">
           <span class="text-xs font-bold uppercase tracking-wide text-slate-300 block">Room Controls</span>
-          <button onclick="initRoom()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
+          <button onclick="initRoom(true)" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
             <i class="fa-solid fa-rotate-right"></i> Regenerate Room PIN
           </button>
         </div>
@@ -241,6 +241,10 @@
     let isSpinning = false;
     let isEditingRoster = false;
     let syncTimer = null;
+    // Names eliminated this room session. Filtered out of every incoming
+    // auto-sync roster so a background poll can't resurrect a drawn winner
+    // just because their row is still sitting in the Sheet.
+    let eliminatedNames = new Set();
 
     let startAngle = 0;
     let spinTimeout = null;
@@ -267,6 +271,23 @@
       // Lock auto-sync polling while actively typing
       rosterInput.addEventListener('focus', () => { isEditingRoster = true; });
       rosterInput.addEventListener('blur', () => { isEditingRoster = false; });
+
+      // Presenter hotkeys: Space = spin, Escape = close winner modal.
+      // Ignored while the user is typing in any input/textarea so hitting
+      // Space to type a name doesn't accidentally trigger a spin.
+      document.addEventListener('keydown', (e) => {
+        const tag = document.activeElement && document.activeElement.tagName;
+        const isTyping = tag === 'INPUT' || tag === 'TEXTAREA';
+        if (isTyping) return;
+
+        if (e.code === 'Space') {
+          e.preventDefault();
+          spin();
+        } else if (e.key === 'Escape') {
+          closeWinnerModal();
+          closeQRModal();
+        }
+      });
     });
 
     function updateEndpoint(newVal) {
@@ -287,10 +308,19 @@
       activeBtn.classList.remove('text-slate-400');
     }
 
-    function initRoom() {
+    function initRoom(isRegenerate) {
       currentRoomPin = Math.floor(100000 + Math.random() * 900000).toString();
       document.getElementById('roomPinDisplay').innerText = currentRoomPin;
       document.getElementById('qrRoomPinLabel').innerText = `PIN: ${currentRoomPin}`;
+
+      // A brand-new PIN means a brand-new room: don't carry over names or
+      // eliminations from whatever room was active before, otherwise the old
+      // roster lingers on screen until someone joins the new room.
+      if (isRegenerate) {
+        roster = [];
+        eliminatedNames.clear();
+      }
+
       rosterInput.value = roster.join('\n');
       updateRosterBadge();
       drawWheel();
@@ -303,11 +333,14 @@
       fetch(`${CONFIG.ENDPOINT}?action=getRoomRoster&pin=${currentRoomPin}`)
         .then(res => res.json())
         .then(data => {
-          if (data.status === "SUCCESS" && Array.isArray(data.roster) && data.roster.length > 0) {
-            roster = data.roster;
-            rosterInput.value = roster.join('\n');
-            updateRosterBadge();
-            drawWheel();
+          if (data.status === "SUCCESS" && Array.isArray(data.roster)) {
+            const incoming = data.roster.filter(name => !eliminatedNames.has(name));
+            if (incoming.length > 0 || data.roster.length === 0) {
+              roster = incoming;
+              rosterInput.value = roster.join('\n');
+              updateRosterBadge();
+              drawWheel();
+            }
           }
         })
         .catch(err => console.warn("Auto-sync fetch failed:", err));
@@ -317,6 +350,18 @@
       if (syncTimer) clearInterval(syncTimer);
       syncTimer = setInterval(fetchLiveRoster, CONFIG.AUTO_SYNC_INTERVAL);
     }
+
+    // Apps Script's free tier caps out around 20,000 requests/day. Stop
+    // polling entirely while this tab isn't visible (e.g. presenter switched
+    // apps) instead of burning quota in the background.
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        if (syncTimer) clearInterval(syncTimer);
+        syncTimer = null;
+      } else if (!syncTimer) {
+        startAutoSync();
+      }
+    });
 
     function resizeCanvas() {
       const container = document.getElementById('canvasContainer');
@@ -474,12 +519,30 @@
       history.unshift({ name: winner, time: new Date().toLocaleTimeString() });
       renderHistory();
 
-      if (document.getElementById('eliminateWinner').checked) {
+      const eliminate = document.getElementById('eliminateWinner').checked;
+      if (eliminate) {
+        eliminatedNames.add(winner);
         roster.splice(index, 1);
         rosterInput.value = roster.join('\n');
         updateRosterBadge();
         drawWheel();
       }
+
+      logWinnerToBackend(winner, eliminate);
+    }
+
+    function logWinnerToBackend(winner, eliminate) {
+      if (!CONFIG.ENDPOINT) return;
+      fetch(CONFIG.ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({
+          action: 'logWinner',
+          winner: winner,
+          pin: currentRoomPin,
+          mode: eliminate ? 'Elimination' : 'Standard'
+        })
+      }).catch(err => console.warn("Winner log failed:", err));
     }
 
     function closeWinnerModal() {
