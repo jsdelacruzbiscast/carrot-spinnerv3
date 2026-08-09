@@ -3,888 +3,440 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CARROT Spinner v3.2 - BISCAST SDS Dashboard</title>
+  <title>Carrot Spinner</title>
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/qrcodegenerator@1.4.4/qrcode.min.js"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- QRCode.js Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
   <style>
-    :root {
-      --biscast-maroon: #800000;
-      --biscast-gold: #FFD700;
-      --biscast-dark: #0A0E1A;
-      --biscast-light: #F8FAFC;
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
     }
 
-    body {
-      background-color: var(--biscast-dark);
-      color: var(--biscast-light);
-      font-family: system-ui, -apple-system, sans-serif;
-      overflow-x: hidden;
+    /* Modal Animation */
+    .modal-animate {
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-
-    .glass-card {
-      background: rgba(15, 23, 42, 0.75);
-      backdrop-filter: blur(16px);
-      border: 1px solid rgba(255, 215, 0, 0.15);
-      box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    }
-
-    .tab-btn.active {
-      background-color: var(--biscast-maroon);
-      color: var(--biscast-gold);
-      border-bottom: 3px solid var(--biscast-gold);
-    }
-
-    .wheel-pointer {
-      width: 0;
-      height: 0;
-      border-left: 20px solid transparent;
-      border-right: 20px solid transparent;
-      border-top: 35px solid var(--biscast-gold);
-      filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.5));
+    @keyframes popIn {
+      0% { transform: scale(0.8); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
     }
   </style>
 </head>
-<body class="min-h-screen flex flex-col">
+<body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
 
-  <!-- Header Banner -->
-  <header class="glass-card px-6 py-3 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-40">
+  <!-- Header / Navigation Bar -->
+  <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 px-6 py-3 flex items-center justify-between sticky top-0 z-30">
     <div class="flex items-center space-x-3">
-      <span class="text-3xl">🎰</span>
+      <div class="bg-orange-500 text-white p-2 rounded-xl shadow-lg shadow-orange-500/20">
+        <i class="fa-solid fa-carrot text-2xl"></i>
+      </div>
       <div>
-        <h1 class="text-xl font-black tracking-wide text-amber-400">BISCAST SDS SPINNER</h1>
-        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v2.2 (v3.2 Isolation & Export Engine)</p>
+        <h1 class="text-2xl font-bold bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
+          Carrot Spinner
+        </h1>
+        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v3.1</p>
       </div>
     </div>
 
+    <!-- Active Room PIN Badge & Presenter Controls -->
     <div class="flex items-center space-x-4">
-      <div class="bg-slate-900/80 px-4 py-1.5 rounded-xl border border-amber-500/30 text-center">
-        <span class="text-xs uppercase text-slate-400 font-bold block">Room PIN</span>
-        <span id="roomPinDisplay" class="text-lg font-mono font-black text-amber-400">------</span>
+      <div class="bg-slate-900/90 border border-slate-700 px-4 py-1.5 rounded-xl flex items-center space-x-3">
+        <span class="text-xs uppercase tracking-wider text-slate-400 font-bold">Room PIN:</span>
+        <span id="roomPinDisplay" class="text-xl font-extrabold text-amber-400 font-mono">------</span>
       </div>
+      
+      <button onclick="openQRModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition flex items-center space-x-2 shadow-lg shadow-indigo-600/20">
+        <i class="fa-solid fa-qrcode"></i>
+        <span>Show QR</span>
+      </button>
 
-      <nav class="flex bg-slate-900 rounded-xl p-1 border border-slate-800">
-        <button onclick="switchTab('stageTab')" id="btn-stageTab" class="tab-btn active px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-1">
-          <span>🎯</span><span>Stage</span>
-        </button>
-        <button onclick="switchTab('rosterTab')" id="btn-rosterTab" class="tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-1">
-          <span>📋</span><span>Roster</span>
-        </button>
-        <button onclick="switchTab('teamsTab')" id="btn-teamsTab" class="tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-1">
-          <span>👥</span><span>Teams</span>
-        </button>
-        <button onclick="switchTab('settingsTab')" id="btn-settingsTab" class="tab-btn px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center space-x-1">
-          <span>⚙️</span><span>Settings</span>
-        </button>
-      </nav>
+      <button onclick="spin()" class="bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold px-6 py-2 rounded-xl shadow-lg shadow-orange-500/30 transition transform active:scale-95 flex items-center space-x-2">
+        <i class="fa-solid fa-play"></i>
+        <span>SPIN!</span>
+      </button>
     </div>
   </header>
 
-  <!-- Main Viewport -->
-  <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
+  <!-- Main Grid Workspace -->
+  <main class="flex-1 p-4 grid grid-cols-1 lg:grid-cols-12 gap-4 max-w-[1920px] w-full mx-auto">
 
-    <!-- TAB 1: WHEEL STAGE -->
-    <section id="stageTab" class="tab-content block space-y-6">
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        
-        <div class="lg:col-span-2 glass-card p-6 rounded-2xl flex flex-col items-center justify-center relative min-h-[500px]">
-          <div class="wheel-pointer absolute top-4 z-20"></div>
-          
-          <div class="relative w-full aspect-square max-w-[480px] flex items-center justify-center">
-            <canvas id="wheelCanvas" class="w-full h-full rounded-full drop-shadow-2xl"></canvas>
-          </div>
-
-          <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
-            <button id="spinBtn" onclick="spinWheel()" 
-                    class="px-8 py-4 rounded-xl bg-gradient-to-r from-red-800 to-amber-600 hover:from-red-700 hover:to-amber-500 text-white font-black text-xl shadow-xl transform active:scale-95 transition-all">
-              SPIN WHEEL <span class="text-xs font-normal opacity-80 block">(Spacebar)</span>
-            </button>
-            <button onclick="resetRoster()" 
-                    class="px-4 py-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm transition-all">
-              Reset Roster
-            </button>
-          </div>
-        </div>
-
-        <div class="space-y-6">
-          <div class="glass-card p-6 rounded-2xl text-center space-y-4">
-            <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider">Audience Mobile Portal</h3>
-            <div id="qrcode" class="flex justify-center bg-white p-3 rounded-xl mx-auto w-fit"></div>
-            <p class="text-xs text-slate-400">Scan QR code to submit names directly to the wheel queue</p>
-          </div>
-
-          <div class="glass-card p-6 rounded-2xl space-y-3">
-            <div class="flex items-center justify-between">
-              <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
-                <span>🏆 Draw History</span>
-                <span id="winnerCount" class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">0</span>
-              </h3>
-              <button onclick="exportWinnersCSV()" class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs transition-all flex items-center gap-1">
-                <span>📥</span><span>Export CSV</span>
-              </button>
-            </div>
-            <ul id="winnerList" class="space-y-2 max-h-[220px] overflow-y-auto pr-2 text-sm text-slate-300">
-              <li class="text-xs text-slate-500 italic">No winners drawn yet.</li>
-            </ul>
-          </div>
-        </div>
-
+    <!-- COLUMN 1: Large Spinner Wheel Stage (~72% width on desktop) -->
+    <section class="lg:col-span-8 xl:col-span-9 bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[500px]">
+      
+      <!-- Top Pointer Arrow -->
+      <div class="absolute top-2 z-10 text-red-500 drop-shadow-[0_4px_6px_rgba(0,0,0,0.5)] transform translate-y-1">
+        <i class="fa-solid fa-caret-down text-5xl"></i>
       </div>
-    </section>
 
-    <!-- TAB 2: ROSTER & SYNC -->
-    <section id="rosterTab" class="tab-content hidden space-y-6">
-      <div class="glass-card p-6 rounded-2xl space-y-6">
-        <div class="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 class="text-lg font-bold text-amber-400">Roster Management</h2>
-            <p class="text-xs text-slate-400">Edit entries manually or synchronize with Google Sheets</p>
-          </div>
-          <div class="flex items-center space-x-3">
-            <span id="syncStatus" class="text-xs font-bold text-amber-400">Auto-Sync Active</span>
-            <label class="relative inline-flex items-center cursor-pointer">
-              <input type="checkbox" id="autoSyncToggle" checked onchange="toggleAutoSync()" class="sr-only peer">
-              <div class="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
-            </label>
-          </div>
-        </div>
+      <!-- Container that auto-scales canvas based on available height -->
+      <div id="canvasContainer" class="w-full flex-1 flex items-center justify-center relative max-h-[calc(100vh-120px)]">
+        <canvas id="wheelCanvas" class="max-w-full max-h-full object-contain cursor-pointer"></canvas>
+      </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Google Sheet Section Tab</label>
-            <select id="sectionSelect" onchange="fetchRosterForTab()" 
-                    class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-amber-400 text-sm">
-              <option value="Pangalan">Pangalan (Default)</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Draw Elimination Mode</label>
-            <select id="eliminationMode" class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:outline-none focus:border-amber-400 text-sm">
-              <option value="keep">Keep Winner in Roster (Repeatable)</option>
-              <option value="remove">Eliminate Winner Upon Draw (Non-Repeat)</option>
-            </select>
-          </div>
-        </div>
-
-        <div>
-          <div class="flex items-center justify-between mb-2">
-            <label class="text-xs font-bold text-slate-400 uppercase">Raw Participant List (One per line)</label>
-            <button onclick="exportRosterCSV()" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs transition-all border border-amber-500/30 flex items-center gap-1">
-              <span>📥</span><span>Export Roster (CSV)</span>
-            </button>
-          </div>
-          <textarea id="manualEntries" rows="10" oninput="handleManualTyping()"
-                    class="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 font-mono text-sm focus:outline-none focus:border-amber-400"
-                    placeholder="Enter participant names here..."></textarea>
-        </div>
-
-        <button onclick="applyManualRoster()" 
-                class="px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-sm transition-all">
-          Apply Manual Changes
+      <!-- Quick Action Toolbar -->
+      <div class="mt-4 flex flex-wrap items-center justify-center gap-3">
+        <button onclick="shuffleRoster()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition">
+          <i class="fa-solid fa-shuffle mr-1"></i> Shuffle
         </button>
+        <button onclick="sortRoster()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold px-3 py-2 rounded-lg transition">
+          <i class="fa-solid fa-arrow-down-a-z mr-1"></i> Sort A-Z
+        </button>
+        <label class="flex items-center space-x-2 bg-slate-900/60 border border-slate-700/60 px-3 py-1.5 rounded-lg cursor-pointer text-xs">
+          <input type="checkbox" id="eliminateWinner" class="rounded bg-slate-800 border-slate-600 text-orange-500 focus:ring-0">
+          <span class="text-slate-300">Eliminate Winner</span>
+        </label>
       </div>
     </section>
 
-    <!-- TAB 3: TEAM GENERATOR -->
-    <section id="teamsTab" class="tab-content hidden space-y-6">
-      <div class="glass-card p-6 rounded-2xl space-y-6">
-        <div>
-          <h2 class="text-lg font-bold text-amber-400">Breakout Team Partition Engine</h2>
-          <p class="text-xs text-slate-400">Randomly group active roster participants using Fisher-Yates shuffle algorithms</p>
+    <!-- COLUMN 2: Audience Mobile Portal & Draw History Sidebar (~28% width on desktop) -->
+    <section class="lg:col-span-4 xl:col-span-3 flex flex-col space-y-4">
+      
+      <!-- Audience Mobile Portal Block -->
+      <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 flex flex-col">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-2">
+            <i class="fa-solid fa-mobile-screen-button text-indigo-400"></i>
+            <span>Audience Mobile Portal</span>
+          </h2>
+          <span id="rosterCountBadge" class="bg-indigo-500/20 text-indigo-300 text-xs px-2 py-0.5 rounded-full font-mono">0 Names</span>
         </div>
-
-        <div class="flex flex-wrap items-center gap-3">
-          <input type="number" id="teamCountInput" min="2" max="20" value="4" 
-                 class="w-28 px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 font-bold text-center text-base focus:outline-none focus:border-amber-400">
-          
-          <button onclick="generateTeams()" 
-                  class="px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-sm transition-all">
-            Generate Random Groups
-          </button>
-          
-          <button onclick="copyTeamsToClipboard()" 
-                  class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all flex items-center gap-1">
-            <span>📋</span><span>Copy</span>
-          </button>
-
-          <button onclick="exportTeamsCSV()" 
-                  class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-sm transition-all border border-amber-500/30 flex items-center gap-1">
-            <span>📥</span><span>Export CSV</span>
-          </button>
-
-          <button id="saveTeamsSheetBtn" onclick="saveTeamsToSheets()" 
-                  class="px-4 py-3 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-emerald-100 font-bold text-sm transition-all flex items-center gap-1">
-            <span>☁️</span><span>Save to Google Sheets</span>
-          </button>
-        </div>
-
-        <div id="teamsDisplay" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <p class="text-xs text-slate-500 italic col-span-full">Click "Generate Random Groups" to build team partitions.</p>
+        
+        <!-- Roster Quick Input Area -->
+        <textarea id="rosterInput" rows="4" placeholder="Enter names (one per line)..." class="w-full bg-slate-900/80 border border-slate-700 rounded-xl p-3 text-xs text-slate-200 focus:outline-none focus:border-indigo-500 resize-none mb-2" oninput="updateRosterFromText()"></textarea>
+        <div class="text-[10px] text-slate-500 flex justify-between">
+          <span>Auto-sync active</span>
+          <span>Press Enter for new line</span>
         </div>
       </div>
-    </section>
 
-    <!-- TAB 4: SETTINGS -->
-    <section id="settingsTab" class="tab-content hidden space-y-6">
-      <div class="glass-card p-6 rounded-2xl space-y-6">
-        <div>
-          <h2 class="text-lg font-bold text-amber-400">Presentation Settings</h2>
-          <p class="text-xs text-slate-400">Configure timers, sound preferences, and mobile portal links</p>
+      <!-- Draw History Log Block -->
+      <div class="bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 flex-1 flex flex-col min-h-[250px]">
+        <div class="flex items-center justify-between mb-3">
+          <h2 class="text-sm font-bold text-slate-200 uppercase tracking-wide flex items-center space-x-2">
+            <i class="fa-solid fa-trophy text-amber-400"></i>
+            <span>Draw History</span>
+          </h2>
+          <button onclick="clearHistory()" class="text-slate-500 hover:text-red-400 text-xs transition">Clear</button>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Enable Winner Speaker Timer</label>
-            <select id="timerToggle" class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 text-sm">
-              <option value="enabled">Enabled</option>
-              <option value="disabled">Disabled</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Speaker Duration (Seconds)</label>
-            <input type="number" id="timerSeconds" value="60" min="5" max="600"
-                   class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-sm">
-          </div>
-
-          <div class="md:col-span-2">
-            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Base Mobile Portal QR Code URL</label>
-            <input type="url" id="qrBaseUrl" placeholder="Leave blank to auto-derive submit.html target"
-                   class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-sm"
-                   onchange="updateQRCode()">
-          </div>
+        <div id="drawHistoryLog" class="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl p-3 overflow-y-auto max-h-[300px] space-y-2">
+          <p class="text-xs text-slate-500 italic text-center py-4">No winners drawn yet.</p>
         </div>
       </div>
-    </section>
 
+    </section>
   </main>
 
-  <!-- Winner Announcement Modal -->
-  <div id="winnerModal" class="fixed inset-0 bg-black/80 backdrop-blur-md hidden flex items-center justify-center p-4 z-50">
-    <div class="glass-card p-8 rounded-3xl max-w-lg w-full text-center space-y-6 border-2 border-amber-400/50 shadow-2xl transform scale-100 transition-all">
-      <span class="text-5xl block animate-bounce">🎉</span>
-      <h2 class="text-xs font-bold text-amber-400 uppercase tracking-widest">DRAW WINNER ANNOUNCEMENT</h2>
-      
-      <div id="winnerName" class="text-3xl md:text-4xl font-black text-white tracking-wide border-y border-amber-500/20 py-4">
-        JUAN DELA CRUZ
+  <!-- Winner Modal Popup -->
+  <div id="winnerModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-slate-800 border border-slate-700 p-8 rounded-3xl max-w-md w-full text-center shadow-2xl modal-animate relative">
+      <div class="w-16 h-16 bg-amber-500/20 border border-amber-500/40 rounded-2xl flex items-center justify-center mx-auto mb-4 text-amber-400 text-3xl">
+        <i class="fa-solid fa-crown"></i>
       </div>
-
-      <div id="speakerTimerContainer" class="bg-slate-900/90 p-4 rounded-xl border border-slate-800 space-y-1">
-        <p class="text-xs font-bold text-slate-400 uppercase">Speaker Time Limit</p>
-        <div id="modalTimerDisplay" class="text-3xl font-mono font-bold text-amber-400">01:00</div>
-      </div>
-
-      <button onclick="closeWinnerModal()" 
-              class="w-full py-4 rounded-xl bg-gradient-to-r from-red-800 to-amber-600 hover:from-red-700 hover:to-amber-500 text-white font-bold text-lg transition-all shadow-lg">
-        Continue Stage Session <span class="text-xs font-normal opacity-75">(Esc)</span>
+      <h3 class="text-sm uppercase tracking-widest text-slate-400 font-bold mb-1">We Have A Winner!</h3>
+      <div id="winnerName" class="text-3xl font-extrabold text-amber-300 py-3 mb-6 border-y border-slate-700/60 font-mono break-words">---</div>
+      <button onclick="closeWinnerModal()" class="w-full bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-400 hover:to-amber-400 text-white font-bold py-3 rounded-xl shadow-lg transition">
+        Continue
       </button>
     </div>
   </div>
 
-  <script>
-    const CONFIG = {
-      API_URL: "https://script.google.com/macros/s/AKfycby_6xYp8WFW1E_pyPNjs5IINOAn-BkqDzzib9GBg_bC1WCxCIbyiqAmYohXkhIPPYly6g/exec",
-      COLORS: ["#800000", "#FFD700", "#1E293B", "#D97706", "#991B1B", "#B45309", "#334155"]
-    };
+  <!-- QR Code Display Modal -->
+  <div id="qrModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+    <div class="bg-slate-800 border border-slate-700 p-6 rounded-3xl max-w-sm w-full text-center shadow-2xl modal-animate relative">
+      <button onclick="closeQRModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white text-xl">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+      <h3 class="text-lg font-bold text-slate-200 mb-1">Scan to Join Room</h3>
+      <p id="qrRoomPinLabel" class="text-xs text-amber-400 font-mono mb-4">PIN: ------</p>
+      
+      <div class="bg-white p-4 rounded-2xl inline-block shadow-inner mb-4">
+        <div id="qrcode"></div>
+      </div>
+      
+      <p class="text-xs text-slate-400">Point phone camera to submit entries to this Carrot Spinner session.</p>
+    </div>
+  </div>
 
-    let roster = [];
-    let winnersList = [];
-    let roomPin = "";
+  <!-- JavaScript Application Logic -->
+  <script>
+    // State Variables
+    let currentRoomPin = "1001";
+    let roster = ["Alex", "Jordan", "Taylor", "Morgan", "Sam", "Chris", "Pat", "Riley"];
+    let history = [];
     let isSpinning = false;
+
+    // Wheel Physics & Math State
     let startAngle = 0;
     let spinTimeout = null;
-    let autoSyncInterval = null;
-    let isManualOverride = false;
-    let audioCtx = null;
-    let modalTimerInterval = null;
-    let generatedTeamsData = [];
+    let spinAngleStart = 10;
+    let spinTime = 0;
+    let spinTimeTotal = 0;
 
-    // Helper: Universal CSV Downloader Engine
-    function downloadCSV(filename, csvContent) {
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement("a");
-      const url = URL.createObjectURL(blob);
-      link.setAttribute("href", url);
-      link.setAttribute("download", filename);
-      link.style.visibility = 'hidden';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
+    // Palette Colors
+    const colors = [
+      "#F97316", "#F59E0B", "#10B981", "#06B6D4", "#3B82F6",
+      "#6366F1", "#8B5CF6", "#EC4899", "#E11D48", "#84CC16"
+    ];
 
-    // Web Audio Initialization
-    function initAudio() {
-      if (!audioCtx) {
-        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
-    }
-    window.addEventListener('pointerdown', initAudio, { once: true });
-    window.addEventListener('keydown', initAudio, { once: true });
+    // DOM Elements
+    const canvas = document.getElementById('wheelCanvas');
+    const ctx = canvas.getContext('2d');
+    const rosterInput = document.getElementById('rosterInput');
 
-    function playTickSound() {
-      if (!audioCtx) return;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
-      gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.04);
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.start();
-      osc.stop(audioCtx.currentTime + 0.04);
-    }
-
-    function playVictoryFanfare() {
-      if (!audioCtx) return;
-      const notes = [261.63, 329.63, 392.00, 523.25];
-      notes.forEach((freq, idx) => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.1);
-        gain.gain.setValueAtTime(0.15, audioCtx.currentTime + idx * 0.1);
-        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + idx * 0.1 + 0.3);
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        osc.start(audioCtx.currentTime + idx * 0.1);
-        osc.stop(audioCtx.currentTime + idx * 0.1 + 0.3);
-      });
-    }
-
-    // App Initialization
-    window.addEventListener('DOMContentLoaded', async () => {
-      setupHotkeys();
-      setupCanvasResizer();
-      await initRoomSession();
-      await fetchTabs();
-      await fetchLiveRoster();
-      startPolling();
+    window.addEventListener('DOMContentLoaded', () => {
+      initRoom();
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
     });
 
-    async function initRoomSession() {
-      try {
-        const res = await fetch(`${CONFIG.API_URL}?action=createRoom`);
-        const data = await res.json();
-        if (data.pin) {
-          roomPin = data.pin;
-          document.getElementById('roomPinDisplay').innerText = roomPin;
-          updateQRCode();
-        }
-      } catch (err) {
-        document.getElementById('roomPinDisplay').innerText = "ONLINE";
-      }
-    }
-
-    function updateQRCode() {
-      const qrContainer = document.getElementById('qrcode');
-      qrContainer.innerHTML = '';
-      
-      let customUrl = document.getElementById('qrBaseUrl') ? document.getElementById('qrBaseUrl').value.trim() : '';
-      let targetUrl = '';
-
-      if (customUrl) {
-        targetUrl = customUrl;
-      } else {
-        let loc = window.location.href.split('?')[0].split('#')[0];
-        if (loc.endsWith('index.html')) {
-          targetUrl = loc.replace('index.html', 'submit.html');
-        } else if (loc.endsWith('/')) {
-          targetUrl = loc + 'submit.html';
-        } else {
-          targetUrl = loc.substring(0, loc.lastIndexOf('/')) + '/submit.html';
-        }
-      }
-
-      if (roomPin) {
-        const separator = targetUrl.includes('?') ? '&' : '?';
-        targetUrl += `${separator}pin=${roomPin}`;
-      }
-
-      try {
-        new QRCode(qrContainer, {
-          text: targetUrl,
-          width: 128,
-          height: 128,
-          colorDark: "#800000",
-          colorLight: "#ffffff"
-        });
-      } catch (e) {}
-    }
-
-    async function fetchTabs() {
-      try {
-        const res = await fetch(`${CONFIG.API_URL}?action=getTabs`);
-        const data = await res.json();
-        if (data.tabs && data.tabs.length > 0) {
-          const select = document.getElementById('sectionSelect');
-          select.innerHTML = '';
-          data.tabs.forEach(tab => {
-            const opt = document.createElement('option');
-            opt.value = tab;
-            opt.innerText = tab;
-            select.appendChild(opt);
-          });
-        }
-      } catch (e) {}
-    }
-
-    async function fetchLiveRoster() {
-      if (isManualOverride || isSpinning) return;
-
-      const selectedTab = document.getElementById('sectionSelect').value || 'Pangalan';
-      try {
-        const res = await fetch(`${CONFIG.API_URL}?action=getRoster&tab=${encodeURIComponent(selectedTab)}&pin=${roomPin}`);
-        const data = await res.json();
-        if (data.status === 'success' && Array.isArray(data.roster)) {
-          roster = data.roster;
-          document.getElementById('manualEntries').value = roster.join('\n');
-          drawWheel();
-        }
-      } catch (e) {}
-    }
-
-    function fetchRosterForTab() {
-      isManualOverride = false;
-      fetchLiveRoster();
-    }
-
-    function setupCanvasResizer() {
-      window.addEventListener('resize', resizeCanvas);
-      resizeCanvas();
-    }
-
-    function resizeCanvas() {
-      const canvas = document.getElementById('wheelCanvas');
-      if (!canvas || !canvas.parentElement) return;
-
-      const dpr = window.devicePixelRatio || 1;
-      const size = canvas.parentElement.clientWidth;
-
-      canvas.width = size * dpr;
-      canvas.height = size * dpr;
-
+    function initRoom() {
+      // Generate or retrieve 6-digit Room PIN
+      currentRoomPin = Math.floor(100000 + Math.random() * 900000).toString();
+      document.getElementById('roomPinDisplay').innerText = currentRoomPin;
+      document.getElementById('qrRoomPinLabel').innerText = `PIN: ${currentRoomPin}`;
+      rosterInput.value = roster.join('\n');
+      updateRosterBadge();
       drawWheel();
     }
 
+    function resizeCanvas() {
+      const container = document.getElementById('canvasContainer');
+      const size = Math.min(container.clientWidth, container.clientHeight) - 20;
+      canvas.width = Math.max(size, 300);
+      canvas.height = Math.max(size, 300);
+      drawWheel();
+    }
+
+    function updateRosterFromText() {
+      const raw = rosterInput.value.split('\n');
+      roster = raw.map(s => s.trim()).filter(s => s.length > 0);
+      updateRosterBadge();
+      drawWheel();
+    }
+
+    function updateRosterBadge() {
+      document.getElementById('rosterCountBadge').innerText = `${roster.length} Names`;
+    }
+
     function drawWheel() {
-      const canvas = document.getElementById('wheelCanvas');
-      if (!canvas || !canvas.getContext) return;
-      const ctx = canvas.getContext('2d');
-      const dpr = window.devicePixelRatio || 1;
-
-      const width = canvas.width / dpr;
-      const height = canvas.height / dpr;
-      const centerX = width / 2;
-      const centerY = height / 2;
-      const outsideRadius = (width / 2) - 10;
-      const insideRadius = Math.max(20, Math.floor(width * 0.08));
-      
-      const margin5mm = 19;
-      const textRadius = Math.max(10, outsideRadius - margin5mm);
-
-      ctx.save();
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, width, height);
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       if (roster.length === 0) {
-        ctx.fillStyle = '#ffffff';
+        // Empty State Rendering
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.arc(0, 0, canvas.width / 2 - 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#94A3B8';
         ctx.font = 'bold 16px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('No participants in roster', centerX, centerY);
+        ctx.textBaseline = 'middle';
+        ctx.fillText('Add names to populate wheel', 0, 0);
         ctx.restore();
         return;
       }
 
-      const arc = Math.PI * 2 / roster.length;
+      const outsideRadius = canvas.width / 2 - 15;
+      const insideRadius = 40;
+      const arc = (Math.PI * 2) / roster.length;
+
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
 
       for (let i = 0; i < roster.length; i++) {
         const angle = startAngle + i * arc;
-        
-        ctx.fillStyle = CONFIG.COLORS[i % CONFIG.COLORS.length];
+        ctx.fillStyle = colors[i % colors.length];
+
+        // Draw Wedge Slice
         ctx.beginPath();
-        ctx.arc(centerX, centerY, outsideRadius, angle, angle + arc, false);
-        ctx.arc(centerX, centerY, insideRadius, angle + arc, angle, true);
+        ctx.arc(0, 0, outsideRadius, angle, angle + arc, false);
+        ctx.arc(0, 0, insideRadius, angle + arc, angle, true);
         ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 2;
         ctx.stroke();
 
-        if (roster.length <= 60) {
-          ctx.save();
-          ctx.fillStyle = (i % 2 === 1) ? '#800000' : '#ffffff';
-          
-          let fontSize = Math.max(10, Math.min(16, Math.floor(outsideRadius * 0.08)));
-          if (roster.length > 30) fontSize = 11;
-          if (roster.length > 45) fontSize = 10;
-          ctx.font = `bold ${fontSize}px sans-serif`;
+        // Slice Text Rendering
+        ctx.save();
+        ctx.fillStyle = "#ffffff";
 
-          const textAngle = angle + arc / 2;
-          ctx.translate(
-            centerX + Math.cos(textAngle) * textRadius,
-            centerY + Math.sin(textAngle) * textRadius
-          );
-          ctx.rotate(textAngle + Math.PI);
-          ctx.textAlign = "left";
-          ctx.textBaseline = "middle";
+        // Dynamic Font Scaling
+        let fontSize = Math.floor(outsideRadius / (roster.length * 0.4));
+        fontSize = Math.min(Math.max(fontSize, 11), 22);
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
 
-          let name = roster[i];
-          if (name.length > 18) name = name.substring(0, 16) + '...';
-          ctx.fillText(name, 0, 0);
-          ctx.restore();
-        }
+        // Horizontal Slice Text Placement
+        const textAngle = angle + arc / 2;
+        const textRadius = (outsideRadius + insideRadius) / 2;
+        const textX = Math.cos(textAngle) * textRadius;
+        const textY = Math.sin(textAngle) * textRadius;
+
+        ctx.translate(textX, textY);
+        
+        // Truncate long strings for narrow slices
+        let text = roster[i];
+        if (text.length > 12) text = text.substring(0, 10) + '..';
+        ctx.fillText(text, 0, 0);
+
+        ctx.restore();
       }
 
-      if (roster.length > 60) {
-        ctx.fillStyle = '#FFD700';
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, insideRadius + 12, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#800000';
-        ctx.font = 'bold 12px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`${roster.length} Entries`, centerX, centerY);
-      }
+      // Draw Center Hub Cap
+      ctx.beginPath();
+      ctx.arc(0, 0, insideRadius, 0, Math.PI * 2, false);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 3;
+      ctx.stroke();
 
       ctx.restore();
-    }
-
-    let spinAngleStart = 0;
-    let spinTime = 0;
-    let spinTimeTotal = 0;
-    let lastTickAngle = 0;
-
-    function spinWheel() {
-      if (isSpinning || roster.length === 0) return;
-      initAudio();
-      isSpinning = true;
-
-      spinAngleStart = Math.random() * 10 + 20;
-      spinTime = 0;
-      spinTimeTotal = Math.random() * 4000 + 4000;
-      lastTickAngle = startAngle;
-
-      rotateWheel();
     }
 
     function rotateWheel() {
       spinTime += 30;
       if (spinTime >= spinTimeTotal) {
-        stopRotateWheel();
+        clearTimeout(spinTimeout);
+        isSpinning = false;
+        determineWinner();
         return;
       }
-
-      const spinAngle = spinAngleStart - easeOut(spinTime, 0, spinAngleStart, spinTimeTotal);
-      startAngle += (spinAngle * Math.PI / 180);
       
-      const arc = Math.PI * 2 / roster.length;
-      if (Math.abs(startAngle - lastTickAngle) >= arc) {
-        playTickSound();
-        lastTickAngle = startAngle;
-      }
-
+      // Dynamic Easing Physics
+      const spinProgress = spinTime / spinTimeTotal;
+      const easeOut = 1 - Math.pow(1 - spinProgress, 3);
+      const angleChange = spinAngleStart * (1 - easeOut);
+      
+      startAngle += (angleChange * Math.PI / 180);
       drawWheel();
       spinTimeout = setTimeout(rotateWheel, 30);
     }
 
-    function easeOut(t, b, c, d) {
-      const ts = (t /= d) * t;
-      const tc = ts * t;
-      return b + c * (tc + -3 * ts + 3 * t);
+    function spin() {
+      if (isSpinning || roster.length === 0) return;
+      isSpinning = true;
+      spinAngleStart = Math.random() * 10 + 15;
+      spinTime = 0;
+      spinTimeTotal = Math.random() * 3000 + 10000; // 10 to 13 seconds
+      rotateWheel();
     }
 
-    function stopRotateWheel() {
-      clearTimeout(spinTimeout);
-      isSpinning = false;
-
-      const degrees = startAngle * 180 / Math.PI + 90;
+    function determineWinner() {
+      const degrees = (startAngle * 180 / Math.PI) % 360;
       const arcd = 360 / roster.length;
-      const index = Math.floor((360 - (degrees % 360)) / arcd) % roster.length;
       
+      // Pointer is fixed at top center (270 degrees)
+      let index = Math.floor((360 - (degrees % 360) + 270) % 360 / arcd);
+      index = (index + roster.length) % roster.length;
+
       const winner = roster[index];
-      announceWinner(winner);
-    }
-
-    function announceWinner(winner) {
-      playVictoryFanfare();
-      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
-
       document.getElementById('winnerName').innerText = winner;
-      
-      winnersList.unshift(winner);
-      updateWinnerList();
+      document.getElementById('winnerModal').classList.remove('hidden');
 
-      fetch(CONFIG.API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify({ action: 'logWinner', winner: winner, pin: roomPin })
-      }).catch(e => {});
+      // Add to Draw Logs
+      history.unshift({ name: winner, time: new Date().toLocaleTimeString() });
+      renderHistory();
 
-      const mode = document.getElementById('eliminationMode').value;
-      if (mode === 'remove') {
-        roster = roster.filter(name => name !== winner);
-        document.getElementById('manualEntries').value = roster.join('\n');
+      // Handle Winner Elimination Option
+      if (document.getElementById('eliminateWinner').checked) {
+        roster.splice(index, 1);
+        rosterInput.value = roster.join('\n');
+        updateRosterBadge();
         drawWheel();
       }
-
-      const timerEnabled = document.getElementById('timerToggle').value === 'enabled';
-      const timerContainer = document.getElementById('speakerTimerContainer');
-      
-      if (timerEnabled) {
-        timerContainer.classList.remove('hidden');
-        startModalTimer();
-      } else {
-        timerContainer.classList.add('hidden');
-      }
-
-      document.getElementById('winnerModal').classList.remove('hidden');
-    }
-
-    function startModalTimer() {
-      clearInterval(modalTimerInterval);
-      let duration = parseInt(document.getElementById('timerSeconds').value) || 60;
-      const display = document.getElementById('modalTimerDisplay');
-
-      function updateDisplay() {
-        const m = Math.floor(duration / 60).toString().padStart(2, '0');
-        const s = (duration % 60).toString().padStart(2, '0');
-        display.innerText = `${m}:${s}`;
-        if (duration <= 0) {
-          clearInterval(modalTimerInterval);
-          display.innerText = "TIME'S UP!";
-        }
-        duration--;
-      }
-
-      updateDisplay();
-      modalTimerInterval = setInterval(updateDisplay, 1000);
     }
 
     function closeWinnerModal() {
-      clearInterval(modalTimerInterval);
       document.getElementById('winnerModal').classList.add('hidden');
     }
 
-    function updateWinnerList() {
-      const list = document.getElementById('winnerList');
-      document.getElementById('winnerCount').innerText = winnersList.length;
-      list.innerHTML = winnersList.map(w => `<li class="bg-slate-900/60 p-2 rounded-lg border border-slate-800 font-semibold text-amber-300">🏆 ${w}</li>`).join('');
-    }
-
-    // EXPORT FUNCTION 1: Draw Winners CSV
-    function exportWinnersCSV() {
-      if (winnersList.length === 0) {
-        alert('No draw winners recorded to export.');
+    function renderHistory() {
+      const container = document.getElementById('drawHistoryLog');
+      if (history.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 italic text-center py-4">No winners drawn yet.</p>`;
         return;
       }
-      let csv = 'Sequence,Winner Name,Room PIN,Export Timestamp\n';
-      winnersList.forEach((winner, idx) => {
-        const seq = winnersList.length - idx;
-        const timeStr = new Date().toLocaleString();
-        csv += `"${seq}","${winner.replace(/"/g, '""')}","${roomPin || 'N/A'}","${timeStr}"\n`;
-      });
-      downloadCSV(`Draw_Winners_Room_${roomPin || 'Session'}.csv`, csv);
-    }
 
-    // EXPORT FUNCTION 2: Active Roster CSV
-    function exportRosterCSV() {
-      if (roster.length === 0) {
-        alert('Active roster is empty.');
-        return;
-      }
-      let csv = 'Index,Participant Name\n';
-      roster.forEach((name, idx) => {
-        csv += `"${idx + 1}","${name.replace(/"/g, '""')}"\n`;
-      });
-      downloadCSV(`Active_Roster_Room_${roomPin || 'Session'}.csv`, csv);
-    }
-
-    function resetRoster() {
-      if (confirm('Reset draw history and reload live roster?')) {
-        winnersList = [];
-        updateWinnerList();
-        isManualOverride = false;
-        fetchLiveRoster();
-      }
-    }
-
-    function handleManualTyping() {
-      isManualOverride = true;
-      const status = document.getElementById('syncStatus');
-      status.innerText = "Auto-Sync Paused (Manual Control)";
-      status.className = "text-xs font-bold text-amber-400";
-    }
-
-    function applyManualRoster() {
-      const text = document.getElementById('manualEntries').value;
-      roster = text.split('\n').map(s => s.trim()).filter(s => s !== '');
-      isManualOverride = true;
-      drawWheel();
-      alert('Manual roster changes applied.');
-    }
-
-    function startPolling() {
-      stopPolling();
-      if (!document.hidden) {
-        autoSyncInterval = setInterval(() => {
-          const autoSyncOn = document.getElementById('autoSyncToggle').checked;
-          if (autoSyncOn && !isManualOverride && !isSpinning) {
-            fetchLiveRoster();
-          }
-        }, 10000);
-      }
-    }
-
-    function stopPolling() {
-      if (autoSyncInterval) {
-        clearInterval(autoSyncInterval);
-        autoSyncInterval = null;
-      }
-    }
-
-    function toggleAutoSync() {
-      const enabled = document.getElementById('autoSyncToggle').checked;
-      const status = document.getElementById('syncStatus');
-      if (enabled) {
-        isManualOverride = false;
-        status.innerText = "Auto-Sync Active";
-        status.className = "text-xs font-bold text-emerald-400";
-        fetchLiveRoster();
-      } else {
-        status.innerText = "Auto-Sync Paused";
-        status.className = "text-xs font-bold text-amber-400";
-      }
-    }
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        stopPolling();
-      } else {
-        startPolling();
-      }
-    });
-
-    function setupHotkeys() {
-      window.addEventListener('keydown', (e) => {
-        const activeTag = document.activeElement ? document.activeElement.tagName : '';
-        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag)) {
-          return;
-        }
-
-        if (e.code === 'Space') {
-          e.preventDefault();
-          spinWheel();
-        } else if (e.code === 'Escape') {
-          closeWinnerModal();
-        } else if (e.code === 'KeyR') {
-          resetRoster();
-        }
-      });
-    }
-
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-
-      document.getElementById(tabId).classList.remove('hidden');
-      document.getElementById(`btn-${tabId}`).classList.add('active');
-
-      if (tabId === 'stageTab') {
-        setTimeout(resizeCanvas, 50);
-      }
-    }
-
-    function generateTeams() {
-      if (roster.length === 0) return;
-      const numTeams = parseInt(document.getElementById('teamCountInput').value) || 2;
-      
-      let shuffled = [...roster];
-      for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-      }
-
-      generatedTeamsData = Array.from({ length: numTeams }, () => []);
-      shuffled.forEach((member, index) => {
-        generatedTeamsData[index % numTeams].push(member);
-      });
-
-      const display = document.getElementById('teamsDisplay');
-      display.innerHTML = generatedTeamsData.map((team, idx) => `
-        <div class="bg-slate-900/90 p-4 rounded-xl border border-slate-800">
-          <h4 class="text-sm font-bold text-amber-400 uppercase mb-2">Team ${idx + 1} (${team.length})</h4>
-          <ul class="text-xs space-y-1 text-slate-300">
-            ${team.map(m => `<li>• ${m}</li>`).join('')}
-          </ul>
+      container.innerHTML = history.map(item => `
+        <div class="flex items-center justify-between bg-slate-800/80 p-2 rounded-lg border border-slate-700/50">
+          <span class="text-xs font-semibold text-amber-300 font-mono">${item.name}</span>
+          <span class="text-[10px] text-slate-500">${item.time}</span>
         </div>
       `).join('');
     }
 
-    function copyTeamsToClipboard() {
-      if (generatedTeamsData.length === 0) {
-        alert('Please generate teams first.');
-        return;
-      }
-
-      let text = generatedTeamsData.map((team, idx) => `--- TEAM ${idx + 1} ---\n` + team.join('\n')).join('\n\n');
-      navigator.clipboard.writeText(text).then(() => {
-        alert('Team partitions copied to clipboard!');
-      });
+    function clearHistory() {
+      history = [];
+      renderHistory();
     }
 
-    // EXPORT FUNCTION 3: Breakout Teams CSV
-    function exportTeamsCSV() {
-      if (!generatedTeamsData || generatedTeamsData.length === 0) {
-        alert('Please generate teams first.');
-        return;
+    function shuffleRoster() {
+      for (let i = roster.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [roster[i], roster[j]] = [roster[j], roster[i]];
       }
-      let csv = 'Team Label,Member Name\n';
-      generatedTeamsData.forEach((team, idx) => {
-        team.forEach(member => {
-          csv += `"Team ${idx + 1}","${member.replace(/"/g, '""')}"\n`;
-        });
-      });
-      downloadCSV(`Breakout_Teams_Room_${roomPin || 'Session'}.csv`, csv);
+      rosterInput.value = roster.join('\n');
+      drawWheel();
     }
 
-    // EXPORT FUNCTION 4: Save Teams directly to Google Sheets
-    async function saveTeamsToSheets() {
-      if (!generatedTeamsData || generatedTeamsData.length === 0) {
-        alert('Please generate teams first.');
-        return;
+    function sortRoster() {
+      roster.sort((a, b) => a.localeCompare(b));
+      rosterInput.value = roster.join('\n');
+      drawWheel();
+    }
+
+    function openQRModal() {
+      const qrContainer = document.getElementById('qrcode');
+      qrContainer.innerHTML = '';
+      
+      // Formulate Target URL pointing strictly to submit.html
+      let baseUrl = window.location.href.split('?')[0].split('#')[0];
+      if (baseUrl.endsWith('/index.html')) {
+        baseUrl = baseUrl.replace('/index.html', '/submit.html');
+      } else if (baseUrl.endsWith('/')) {
+        baseUrl += 'submit.html';
+      } else {
+        baseUrl = baseUrl.substring(0, baseUrl.lastIndexOf('/')) + '/submit.html';
       }
 
-      const saveBtn = document.getElementById('saveTeamsSheetBtn');
-      saveBtn.disabled = true;
-      saveBtn.innerText = 'Saving...';
+      const targetUrl = `${baseUrl}?pin=${currentRoomPin}`;
 
-      try {
-        const response = await fetch(CONFIG.API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'exportTeams',
-            pin: roomPin,
-            teams: generatedTeamsData
-          })
-        });
+      new QRCode(qrContainer, {
+        text: targetUrl,
+        width: 180,
+        height: 180,
+        colorDark : "#0f172a",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+      });
 
-        const result = await response.json();
-        if (result.status === 'success') {
-          alert(`Teams exported successfully to tab "${result.sheetName}" in Google Sheets!`);
-        } else {
-          alert('Failed to save teams: ' + (result.message || 'Unknown error'));
-        }
-      } catch (err) {
-        alert('Network error saving teams to Google Sheets.');
-      } finally {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = '<span>☁️</span><span>Save to Google Sheets</span>';
-      }
+      document.getElementById('qrModal').classList.remove('hidden');
+    }
+
+    function closeQRModal() {
+      document.getElementById('qrModal').classList.add('hidden');
     }
   </script>
 </body>
