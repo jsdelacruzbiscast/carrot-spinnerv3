@@ -3,122 +3,120 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BISCAST SDS - Join Wheel Queue</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+  <title>CARROT Spinner - Join Room</title>
   <style>
-    body {
-      background-color: #0A0E1A;
-      color: #F8FAFC;
-      font-family: system-ui, -apple-system, sans-serif;
+    :root {
+      --maroon: #800000;
+      --gold: #FFD700;
+      --dark-bg: #0A0E1A;
+      --card-bg: rgba(255, 255, 255, 0.05);
     }
-    .brand-card {
-      background: rgba(15, 23, 42, 0.85);
+    body {
+      margin: 0; padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: var(--dark-bg);
+      color: #F8FAFC;
+      display: flex; justify-content: center; align-items: center;
+      min-height: 100vh;
+    }
+    .container {
+      width: 90%; max-width: 400px; padding: 2rem;
+      background: var(--card-bg);
       backdrop-filter: blur(12px);
       border: 1px solid rgba(255, 215, 0, 0.2);
+      border-radius: 16px; text-align: center;
     }
+    h2 { color: var(--gold); margin-bottom: 0.2rem; }
+    .subtitle { font-size: 0.75rem; color: #aaa; margin-bottom: 1.5rem; }
+    .input-group { margin-bottom: 1.2rem; text-align: left; }
+    label { display: block; font-size: 0.8rem; color: var(--gold); margin-bottom: 4px; }
+    input {
+      width: 100%; padding: 12px; border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(0, 0, 0, 0.4); color: #fff; font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%; padding: 14px; border: none; border-radius: 8px;
+      background: linear-gradient(135deg, var(--maroon), #a00000);
+      color: var(--gold); font-weight: bold; font-size: 1rem; cursor: pointer;
+    }
+    button:disabled { opacity: 0.5; }
+    #statusMsg { margin-top: 1rem; font-size: 0.9rem; font-weight: bold; }
+    .success { color: #4ADE80; }
+    .error { color: #F87171; }
   </style>
 </head>
-<body class="min-h-screen flex items-center justify-center p-4">
-
-  <div class="brand-card w-full max-w-md p-6 rounded-2xl shadow-2xl space-y-6 text-center">
-    <div class="space-y-2">
-      <div class="inline-block p-3 rounded-full bg-red-950/60 border border-amber-500/30 mb-2">
-        <span class="text-3xl">🎯</span>
+<body>
+  <div class="container">
+    <h2>CARROT Spinner</h2>
+    <div class="subtitle">BISCAST Student Development Services</div>
+    
+    <form id="regForm">
+      <div class="input-group">
+        <label for="roomPin">Room PIN</label>
+        <input type="text" id="roomPin" placeholder="6-Digit PIN" required readonly>
       </div>
-      <h1 class="text-2xl font-black text-amber-400 tracking-wide">BISCAST SDS</h1>
-      <p class="text-xs text-slate-400 uppercase tracking-widest font-semibold">Student Development Services</p>
-    </div>
-
-    <div id="formContainer" class="space-y-4 text-left">
-      <div>
-        <label class="block text-xs font-bold text-amber-300 uppercase mb-1">Room Session PIN</label>
-        <input type="text" id="pinInput" maxlength="6" placeholder="Enter 6-digit PIN"
-               class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-amber-400 font-mono text-center text-xl tracking-widest focus:outline-none focus:border-amber-400">
+      <div class="input-group">
+        <label for="fullName">Your Full Name</label>
+        <input type="text" id="fullName" placeholder="e.g. Juan Dela Cruz" required>
       </div>
-
-      <div>
-        <label class="block text-xs font-bold text-amber-300 uppercase mb-1">Your Full Name</label>
-        <input type="text" id="nameInput" placeholder="e.g. Juan Dela Cruz"
-               class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 text-base focus:outline-none focus:border-amber-400">
-      </div>
-
-      <button id="submitBtn" onclick="submitEntry()"
-              class="w-full py-4 rounded-xl bg-gradient-to-r from-red-800 to-amber-600 hover:from-red-700 hover:to-amber-500 text-white font-bold text-lg shadow-lg transform active:scale-95 transition-all">
-        Join Wheel Queue
-      </button>
-    </div>
-
-    <div id="statusAlert" class="hidden p-4 rounded-xl text-sm font-semibold"></div>
+      <button type="submit" id="submitBtn">Join Draw</button>
+    </form>
+    <div id="statusMsg"></div>
   </div>
 
   <script>
-    // PASTE YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL HERE:
-    const API_URL = "https://script.google.com/macros/s/AKfycby_6xYp8WFW1E_pyPNjs5IINOAn-BkqDzzib9GBg_bC1WCxCIbyiqAmYohXkhIPPYly6g/exec";
+    const ENDPOINT = "https://script.google.com/macros/s/AKfycby_6xYp8WFW1E_pyPNjs5IINOAn-BkqDzzib9GBg_bC1WCxCIbyiqAmYohXkhIPPYly6g/exec";
 
-    window.addEventListener('DOMContentLoaded', () => {
-      const urlParams = new URLSearchParams(window.location.search);
-      const pinParam = urlParams.get('pin');
-      if (pinParam) {
-        document.getElementById('pinInput').value = pinParam;
-        checkAlreadyRegistered(pinParam);
-      }
-    });
-
-    function checkAlreadyRegistered(pin) {
-      if (localStorage.getItem('registered_room_' + pin)) {
-        showAlert(`You are already registered for Room #${pin}! Look at the main screen.`, 'bg-amber-900/80 text-amber-200 border border-amber-500');
-        document.getElementById('formContainer').classList.add('hidden');
-      }
+    const urlParams = new URLSearchParams(window.location.search);
+    const pinParam = urlParams.get('pin');
+    const pinInput = document.getElementById('roomPin');
+    
+    if (pinParam) {
+      pinInput.value = pinParam;
+    } else {
+      pinInput.removeAttribute('readonly');
     }
 
-    async function submitEntry() {
-      const pin = document.getElementById('pinInput').value.trim();
-      const name = document.getElementById('nameInput').value.trim();
-      const submitBtn = document.getElementById('submitBtn');
+    document.getElementById('regForm').addEventListener('submit', function(e) {
+      e.preventDefault();
+      const btn = document.getElementById('submitBtn');
+      const status = document.getElementById('statusMsg');
+      const pin = pinInput.value.trim();
+      const name = document.getElementById('fullName').value.trim();
 
-      if (!name) {
-        showAlert('Please enter your full name.', 'bg-red-900/80 text-red-200 border border-red-500');
-        return;
-      }
+      if (!pin || !name) return;
 
-      submitBtn.disabled = true;
-      submitBtn.innerText = 'Submitting...';
+      btn.disabled = true;
+      status.className = '';
+      status.textContent = 'Registering name...';
 
-      try {
-        const response = await fetch(API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({
-            action: 'submitName',
-            pin: pin,
-            name: name
-          })
-        });
-
-        const result = await response.json();
-
-        if (result.status === 'success') {
-          if (pin) localStorage.setItem('registered_room_' + pin, name);
-          showAlert("You're in! Look at the main presentation screen.", 'bg-emerald-900/80 text-emerald-200 border border-emerald-500');
-          document.getElementById('formContainer').classList.add('hidden');
+      fetch(ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'submitName', pin: pin, name: name })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.status === 'SUCCESS') {
+          status.className = 'success';
+          status.textContent = "You're in! Watch the screen.";
+          document.getElementById('fullName').value = '';
+        } else if (data.status === 'EXISTS') {
+          status.className = 'error';
+          status.textContent = 'Name already registered in this room.';
         } else {
-          showAlert(result.message || 'Error joining queue.', 'bg-amber-900/80 text-amber-200 border border-amber-500');
-          submitBtn.disabled = false;
-          submitBtn.innerText = 'Join Wheel Queue';
+          status.className = 'error';
+          status.textContent = data.message || 'Registration failed.';
         }
-      } catch (err) {
-        showAlert('Network error. Please try again.', 'bg-red-900/80 text-red-200 border border-red-500');
-        submitBtn.disabled = false;
-        submitBtn.innerText = 'Join Wheel Queue';
-      }
-    }
-
-    function showAlert(msg, themeClass) {
-      const alertBox = document.getElementById('statusAlert');
-      alertBox.className = `p-4 rounded-xl text-sm font-semibold ${themeClass}`;
-      alertBox.innerText = msg;
-      alertBox.classList.remove('hidden');
-    }
+      })
+      .catch(() => {
+        status.className = 'error';
+        status.textContent = 'Network error. Retry again.';
+      })
+      .finally(() => { btn.disabled = false; });
+    });
   </script>
 </body>
 </html>
