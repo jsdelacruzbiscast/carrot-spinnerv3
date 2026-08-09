@@ -525,7 +525,7 @@
       alert("Teams copied to clipboard!");
     }
 
-  function openQRModal() {
+ function openQRModal() {
   const modal = document.getElementById('qrModal');
   const container = document.getElementById('qrcode');
   container.innerHTML = '';
@@ -542,7 +542,8 @@
     baseUrl += '/submit.html';
   }
 
-  const targetUrl = baseUrl + (activePin ? `?pin=${activePin}` : '');
+  // Attach active room PIN if present
+  const targetUrl = baseUrl + (typeof activePin !== 'undefined' && activePin ? `?pin=${activePin}` : '');
   
   new QRCode(container, { text: targetUrl, width: 180, height: 180 });
   
