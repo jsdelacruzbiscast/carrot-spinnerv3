@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CARROT Spinner v3.0 | Multi-Tenant Stage</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #0B0F19; }
+    .tab-active { border-bottom: 3px solid #F59E0B; color: #F59E0B; }
+  </style>
+</head>
+<body class="text-slate-100 min-h-screen flex flex-col">
+
+  <!-- TOP HEADER -->
+  <header class="bg-slate-900 border-b border-slate-800 px-6 py-4 flex flex-wrap justify-between items-center gap-4">
+    <div>
+      <div class="flex items-center space-x-2">
+        <span class="text-2xl">🥕</span>
+        <h1 class="text-xl font-black text-amber-400 tracking-tight">CARROT Spinner</h1>
+        <span class="bg-amber-400/10 text-amber-400 text-xs px-2 py-0.5 rounded font-bold border border-amber-400/20">v3.0 Multi-Tenant</span>
+      </div>
+      <p class="text-xs text-slate-400">Developed by BISCAST Student Development Services (SDS)</p>
+    </div>
+
+    <!-- ROOM CONTROL BADGE -->
+    <div class="flex items-center space-x-4 bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">
+      <div>
+        <span class="block text-[10px] uppercase font-bold text-slate-500">Active Room PIN</span>
+        <span id="activePinDisplay" class="text-xl font-black tracking-widest text-amber-400">NO ROOM</span>
+      </div>
+      <button id="hostRoomBtn" onclick="toggleRoomState()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-4 py-2 rounded-lg text-sm transition">
+        🎲 Start Room
+      </button>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <div class="bg-slate-900/50 border-b border-slate-800 px-6 flex space-x-8 text-sm font-bold text-slate-400">
+    <button onclick="switchTab('stage')" id="tab-stage" class="py-3 tab-active">🎯 Wheel Stage</button>
+    <button onclick="switchTab('room')" id="tab-room" class="py-3">📡 Room & QR Portal</button>
+    <button onclick="switchTab('roster')" id="tab-roster" class="py-3">📋 Roster & Teams</button>
+    <button onclick="switchTab('settings')" id="tab-settings" class="py-3">⚙️ Settings</button>
+  </div>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 p-6 max-w-7xl w-full mx-auto">
+    
+    <!-- VIEW 1: WHEEL STAGE -->
+    <section id="view-stage" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      
+      <!-- WHEEL DISPLAY (LEFT 2 COLS) -->
+      <div class="lg:col-span-2 bg-slate-900/60 rounded-2xl border border-slate-800 p-6 flex flex-col items-center justify-center relative min-h-[500px]">
+        
+        <!-- POINTER -->
+        <div class="absolute top-4 z-20 text-red-500 text-4xl drop-shadow-lg">▼</div>
+
+        <!-- CANVAS -->
+        <canvas id="wheelCanvas" width="480" height="480" class="max-w-full drop-shadow-2xl"></canvas>
+
+        <!-- SPIN CONTROLS -->
+        <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
+          <button onclick="triggerSpin()" id="spinBtn" class="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-slate-950 font-black text-xl px-10 py-4 rounded-2xl shadow-xl shadow-orange-500/20 active:scale-95 transition">
+            🎯 SPIN WHEEL (Space)
+          </button>
+        </div>
+      </div>
+
+      <!-- STAGE PANEL (RIGHT 1 COL) -->
+      <div class="space-y-6">
+        
+        <!-- DRAW MODE SETTINGS -->
+        <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5">
+          <h3 class="text-sm font-bold uppercase text-slate-400 mb-3">Draw Mode</h3>
+          <div class="space-y-2">
+            <label class="flex items-center space-x-3 text-sm cursor-pointer">
+              <input type="radio" name="drawMode" value="standard" checked class="text-amber-500">
+              <span>Standard (Keep on wheel)</span>
+            </label>
+            <label class="flex items-center space-x-3 text-sm cursor-pointer">
+              <input type="radio" name="drawMode" value="elimination" class="text-amber-500">
+              <span>Elimination (Remove after win)</span>
+            </label>
+          </div>
+        </div>
+
+        <!-- SPEAKER COUNTDOWN TIMER -->
+        <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5 text-center">
+          <h3 class="text-xs font-bold uppercase text-slate-400 mb-1">Speaker Countdown</h3>
+          <div id="timerDisplay" class="text-4xl font-black text-amber-400 font-mono my-2">00:30</div>
+          <div class="flex justify-center space-x-2">
+            <button onclick="startTimer()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-3 py-1.5 rounded">Start</button>
+            <button onclick="resetTimer()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-3 py-1.5 rounded">Reset</button>
+          </div>
+        </div>
+
+        <!-- RECENT WINNERS -->
+        <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-5">
+          <h3 class="text-xs font-bold uppercase text-slate-400 mb-2">Session Winner History</h3>
+          <ul id="historyList" class="space-y-1.5 text-xs text-slate-300 max-h-40 overflow-y-auto">
+            <li class="text-slate-500 italic">No spins recorded yet.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 2: ROOM & QR PORTAL -->
+    <section id="view-room" class="hidden grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6 text-center">
+        <h2 class="text-lg font-bold text-slate-200 mb-2">Room Entry QR Code</h2>
+        <p class="text-xs text-slate-400 mb-4">Project this screen for smartphones to scan and join instantly.</p>
+        <div class="bg-white p-4 rounded-xl inline-block">
+          <img id="qrImage" src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=CARROT" alt="QR Code" class="w-48 h-48">
+        </div>
+        <p id="portalUrlText" class="text-xs font-mono text-amber-400 mt-4 break-all"></p>
+      </div>
+
+      <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6">
+        <h2 class="text-lg font-bold text-slate-200 mb-2">Live Audience Connection</h2>
+        <div class="flex items-center justify-between bg-slate-950 p-4 rounded-xl border border-slate-800 mb-4">
+          <div>
+            <span class="text-xs text-slate-400 block">Total Joined</span>
+            <span id="joinedCount" class="text-3xl font-black text-amber-400">0</span>
+          </div>
+          <button onclick="fetchLiveRoster()" class="bg-slate-800 hover:bg-slate-700 text-xs font-bold px-4 py-2 rounded-lg">
+            🔄 Manual Refresh
+          </button>
+        </div>
+        <p class="text-xs text-slate-400">
+          Audience submissions poll automatically every 4 seconds when a room is active.
+        </p>
+      </div>
+    </section>
+
+    <!-- VIEW 3: ROSTER & TEAMS -->
+    <section id="view-roster" class="hidden space-y-6">
+      <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6">
+        <h2 class="text-lg font-bold text-slate-200 mb-2">Manual Roster Management</h2>
+        <p class="text-xs text-slate-400 mb-4">Add names manually (one name per line). Typing here automatically pauses background auto-sync.</p>
+        <textarea id="manualRosterText" rows="8" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm font-mono text-slate-200 focus:outline-none focus:border-amber-400" placeholder="Juan Dela Cruz&#10;Maria Clara&#10;Jose Rizal"></textarea>
+        <button onclick="applyManualRoster()" class="mt-3 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold px-5 py-2.5 rounded-xl text-sm">
+          Apply Manual Roster
+        </button>
+      </div>
+    </section>
+
+    <!-- VIEW 4: SETTINGS -->
+    <section id="view-settings" class="hidden space-y-6">
+      <div class="bg-slate-900/60 rounded-2xl border border-slate-800 p-6 max-w-xl">
+        <h2 class="text-lg font-bold text-slate-200 mb-4">System Settings</h2>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Public Portal Base URL (submit.html)</label>
+            <input type="text" id="settingPortalUrl" value="https://biscast-sds-spinner.pages.dev/submit.html" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-amber-400">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase text-slate-400 mb-1">Speaker Timer (Seconds)</label>
+            <input type="number" id="settingTimerSec" value="30" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2 text-sm text-slate-200">
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- WINNER MODAL -->
+  <div id="winnerModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+    <div class="bg-slate-900 border border-slate-700 rounded-3xl p-8 max-w-md w-full text-center shadow-2xl relative">
+      <span class="text-4xl">🎉</span>
+      <h2 class="text-xs uppercase font-bold text-amber-400 mt-2 tracking-widest">Selected Winner</h2>
+      <div id="winnerName" class="text-3xl font-black text-white my-4 break-words"></div>
+      <button onclick="closeWinnerModal()" class="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-3 rounded-xl transition">
+        Continue (Spacebar)
+      </button>
+    </div>
+  </div>
+
+  <script>
+    // --- APP STATE ---
+    const API_URL = "https://script.google.com/macros/s/AKfycbynRv_77pNykgCch-W2ACO_GIzZ-Q39lN5P85wF2iaGp1cz5ClHVMNDe6NFhSz-rhW8/exec";
+    let activeRoomCode = null;
+    let roster = ["Prof. Santos", "Student A", "Student B", "Student C", "Student D"];
+    let history = [];
+    let pollInterval = null;
+    let timerInterval = null;
+    let timerSeconds = 30;
+
+    // --- WHEEL PHYSICS STATE ---
+    let startAngle = 0;
+    let spinTimeout = null;
+    let spinArcStart = 0;
+    let spinTime = 0;
+    let spinTimeTotal = 0;
+    let ctx;
+
+    const colors = ["#F59E0B", "#3B82F6", "#10B981", "#EC4899", "#8B5CF6", "#6366F1", "#14B8A6", "#F97316"];
+
+    // --- AUDIO SYNTHESIS ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function playTickSound() {
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.05);
+    }
+
+    // --- INITIALIZATION ---
+    window.onload = () => {
+      const canvas = document.getElementById("wheelCanvas");
+      ctx = canvas.getContext("2d");
+      drawWheel();
+      
+      document.addEventListener("keydown", (e) => {
+        if (e.code === "Space" && e.target.tagName !== "INPUT" && e.target.tagName !== "TEXTAREA") {
+          e.preventDefault();
+          if (!document.getElementById("winnerModal").classList.contains("hidden")) {
+            closeWinnerModal();
+          } else {
+            triggerSpin();
+          }
+        }
+      });
+    };
+
+    // --- ROOM CREATION & MULTI-TENANCY ---
+    async function toggleRoomState() {
+      const btn = document.getElementById("hostRoomBtn");
+      const pinDisp = document.getElementById("activePinDisplay");
+
+      if (!activeRoomCode) {
+        btn.innerText = "Creating...";
+        try {
+          const res = await fetch(API_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify({ action: 'createRoom', presenter: 'Host' })
+          }).then(r => r.json());
+
+          if (res.success) {
+            activeRoomCode = res.roomCode;
+            pinDisp.innerText = activeRoomCode;
+            btn.innerText = "🔒 Close Room";
+            btn.classList.replace("bg-amber-500", "bg-red-500");
+
+            updateQrPortal();
+            startPolling();
+          }
+        } catch (e) {
+          alert("Failed to create room.");
+          btn.innerText = "🎲 Start Room";
+        }
+      } else {
+        clearInterval(pollInterval);
+        activeRoomCode = null;
+        pinDisp.innerText = "NO ROOM";
+        btn.innerText = "🎲 Start Room";
+        btn.classList.replace("bg-red-500", "bg-amber-500");
+      }
+    }
+
+    function updateQrPortal() {
+      const baseUrl = document.getElementById("settingPortalUrl").value.trim();
+      const fullUrl = `${baseUrl}?pin=${activeRoomCode}`;
+      document.getElementById("portalUrlText").innerText = fullUrl;
+      document.getElementById("qrImage").src = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(fullUrl)}`;
+    }
+
+    function startPolling() {
+      pollInterval = setInterval(fetchLiveRoster, 4000);
+    }
+
+    async function fetchLiveRoster() {
+      if (!activeRoomCode) return;
+      try {
+        const res = await fetch(`${API_URL}?action=fetchRoster&roomCode=${activeRoomCode}`).then(r => r.json());
+        if (res.success && res.roster.length > 0) {
+          roster = res.roster.map(item => item.name);
+          document.getElementById("joinedCount").innerText = roster.length;
+          document.getElementById("manualRosterText").value = roster.join("\n");
+          drawWheel();
+        }
+      } catch (e) {}
+    }
+
+    // --- WHEEL CANVAS DRAWING ---
+    function drawWheel() {
+      if (!ctx) return;
+      ctx.clearRect(0, 0, 480, 480);
+      if (roster.length === 0) return;
+
+      const arc = Math.PI * 2 / roster.length;
+      const outsideRadius = 220;
+      const textRadius = 160;
+      const insideRadius = 0;
+
+      ctx.save();
+      for (let i = 0; i < roster.length; i++) {
+        const angle = startAngle + i * arc;
+        ctx.fillStyle = colors[i % colors.length];
+
+        ctx.beginPath();
+        ctx.arc(240, 240, outsideRadius, angle, angle + arc, false);
+        ctx.arc(240, 240, insideRadius, angle + arc, angle, true);
+        ctx.fill();
+
+        ctx.save();
+        ctx.fillStyle = "white";
+        ctx.translate(240 + Math.cos(angle + arc / 2) * textRadius, 240 + Math.sin(angle + arc / 2) * textRadius);
+        ctx.rotate(angle + arc / 2 + Math.PI / 2);
+        
+        // Font sizing logic (5mm edge offset adjustment)
+        const text = roster[i];
+        ctx.font = 'bold 16px "Plus Jakarta Sans"';
+        ctx.fillText(text, -ctx.measureText(text).width / 2, 0);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    // --- SPIN PHYSICS ENGINE (Max 20s, decelerating ease-out) ---
+    function triggerSpin() {
+      if (roster.length === 0) return;
+      spinArcStart = Math.random() * 10 + 10;
+      spinTime = 0;
+      spinTimeTotal = Math.random() * 5000 + 12000; // 12s to 17s random rotation
+      rotateWheel();
+    }
+
+    function rotateWheel() {
+      spinTime += 30;
+      if (spinTime >= spinTimeTotal) {
+        stopRotateWheel();
+        return;
+      }
+      const spinAngle = spinArcStart - easeOut(spinTime, 0, spinArcStart, spinTimeTotal);
+      startAngle += (spinAngle * Math.PI / 180);
+      drawWheel();
+      playTickSound();
+      spinTimeout = setTimeout(rotateWheel, 30);
+    }
+
+    function stopRotateWheel() {
+      clearTimeout(spinTimeout);
+      const degrees = startAngle * 180 / Math.PI + 90;
+      const arcd = 360 / roster.length;
+      const index = Math.floor((360 - degrees % 360) / arcd);
+      const winner = roster[index];
+
+      announceWinner(winner);
+    }
+
+    function easeOut(t, b, c, d) {
+      const ts = (t /= d) * t;
+      const tc = ts * t;
+      return b + c * (tc + -3 * ts + 3 * t);
+    }
+
+    // --- WINNER ANNOUNCEMENT & MODAL ---
+    function announceWinner(winner) {
+      document.getElementById("winnerName").innerText = winner;
+      document.getElementById("winnerModal").classList.remove("hidden");
+      document.getElementById("winnerModal").classList.add("flex");
+
+      confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+
+      history.unshift(`${new Date().toLocaleTimeString()} - ${winner}`);
+      updateHistory();
+
+      // Check Elimination mode
+      const mode = document.querySelector('input[name="drawMode"]:checked').value;
+      if (mode === "elimination") {
+        roster = roster.filter(name => name !== winner);
+        document.getElementById("manualRosterText").value = roster.join("\n");
+        drawWheel();
+      }
+
+      // Log to backend
+      if (activeRoomCode) {
+        fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'logSpin', roomCode: activeRoomCode, winner: winner, mode: mode })
+        });
+      }
+    }
+
+    function closeWinnerModal() {
+      document.getElementById("winnerModal").classList.add("hidden");
+      document.getElementById("winnerModal").classList.remove("flex");
+      startTimer();
+    }
+
+    function updateHistory() {
+      const list = document.getElementById("historyList");
+      list.innerHTML = history.map(item => `<li>🏆 ${item}</li>`).join('');
+    }
+
+    // --- TIMER CONTROLS ---
+    function startTimer() {
+      clearInterval(timerInterval);
+      timerSeconds = parseInt(document.getElementById("settingTimerSec").value) || 30;
+      updateTimerDisplay();
+      timerInterval = setInterval(() => {
+        timerSeconds--;
+        updateTimerDisplay();
+        if (timerSeconds <= 0) clearInterval(timerInterval);
+      }, 1000);
+    }
+
+    function resetTimer() {
+      clearInterval(timerInterval);
+      timerSeconds = parseInt(document.getElementById("settingTimerSec").value) || 30;
+      updateTimerDisplay();
+    }
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+      const secs = (timerSeconds % 60).toString().padStart(2, '0');
+      document.getElementById("timerDisplay").innerText = `${mins}:${secs}`;
+    }
+
+    // --- ROSTER MANUAL OVERRIDE ---
+    function applyManualRoster() {
+      const text = document.getElementById("manualRosterText").value;
+      roster = text.split("\n").map(n => n.trim()).filter(n => n.length > 0);
+      drawWheel();
+      alert("Manual roster applied!");
+    }
+
+    // --- NAVIGATION TAB SWITCHING ---
+    function switchTab(tab) {
+      ['stage', 'room', 'roster', 'settings'].forEach(t => {
+        document.getElementById(`view-${t}`).classList.add('hidden');
+        document.getElementById(`tab-${t}`).classList.remove('tab-active');
+      });
+      document.getElementById(`view-${tab}`).classList.remove('hidden');
+      document.getElementById(`tab-${tab}`).classList.add('tab-active');
+    }
+  </script>
+</body>
+</html>
