@@ -1,39 +1,3 @@
-You are completely right to call that out! In transitioning the architecture to support Kahoot-style Multi-Tenant Room PINs, several of the fine-tuned presentation and physics features from v2.2 were streamlined.
-
-Here is the updated **`index.html` (CARROT Spinner v3.1)** which fully merges the **v3 Multi-Tenant Room Isolation backend** with **ALL v2.2 stage presentation features**.
-
----
-
-## 🌟 What Has Been Restored & Refined in v3.1
-
-### 1. 📏 Horizontal Slice Text Alignment ($5\text{ mm}$ Allowance)
-
-* **Radial Horizontal Orientation:** Text runs radially along the center axis of each wedge pointing toward the outer circle rim.
-* **Exact $5\text{ mm}$ Margin Allowance:** Converted $5\text{ mm}$ directly to canvas screen pixels ($\approx 18.9\text{ px}$ at $96\text{ DPI}$). Text aligns flush (`textAlign = 'right'`) exactly $5\text{ mm}$ before the outer boundary to avoid rim clipping.
-* **Adaptive Dynamic Font Scaling:** Text size scales dynamically between $12\text{px}$ and $32\text{px}+$ depending on the slice arc width and string length. Short names on wide slices expand automatically for high stage visibility.
-
-### 2. 🎯 Exact $270^\circ$ Top Pointer Precision
-
-* The indicator arrow points directly down at $270^\circ$ ($\frac{3\pi}{2}\text{ radians}$).
-* Winner calculations normalize angles in the range $[0, 2\pi)$ relative to $270^\circ$ so the visual slice under the arrow **always 100% matches** the winner pop-up.
-
-### 3. 🔊 20-Second Decelerating Spin & Synchronized Ticking
-
-* **Extended Dynamic Spin:** Physics calculations generate exponential decelerating spins lasting up to **20 seconds**.
-* **Synced Wheel Line Ticks:** Web Audio API synthesize real-time mechanical clicks that trigger precisely whenever a slice boundary line crosses under the top pointer.
-
-### 4. 🎨 BISCAST SDS Visual Themes & Custom Settings
-
-* Restored **BISCAST Gold & Maroon** (`#800000` / `#FFD700`), **Cyberpunk Neon**, and **Ocean Breeze** color palettes.
-* Restored configurable **Speaker Countdown Timer**, sound FX toggle, hotkey listeners (Space to spin, Esc to dismiss modal), and keyboard focus protection (typing in text fields won't accidentally trigger a spin).
-
----
-
-## 📄 Complete Updated Host Dashboard (`index.html`)
-
-Replace the code in your `index.html` file on GitHub with this complete implementation:
-
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
