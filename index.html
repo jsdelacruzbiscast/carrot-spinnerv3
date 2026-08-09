@@ -263,7 +263,14 @@
 
     window.addEventListener('DOMContentLoaded', () => {
       document.getElementById('endpointInput').value = CONFIG.ENDPOINT;
-      initRoom();
+
+      // Reuse the room PIN across reloads (accidental refresh, laptop
+      // sleep/wake, etc). Without this, every page load minted a brand-new
+      // PIN, silently orphaning any QR code the audience had already scanned
+      // and any names they'd already submitted under the old PIN.
+      const savedPin = sessionStorage.getItem('carrotRoomPin');
+      initRoom(!savedPin, savedPin);
+
       resizeCanvas();
       startAutoSync();
       window.addEventListener('resize', resizeCanvas);
@@ -308,8 +315,12 @@
       activeBtn.classList.remove('text-slate-400');
     }
 
-    function initRoom(isRegenerate) {
-      currentRoomPin = Math.floor(100000 + Math.random() * 900000).toString();
+    // isRegenerate: true when a fresh PIN should be minted (first-ever load,
+    // or the presenter explicitly clicked "Regenerate Room PIN").
+    // existingPin: a previously saved PIN to reuse instead (page reload).
+    function initRoom(isRegenerate, existingPin) {
+      currentRoomPin = existingPin || Math.floor(100000 + Math.random() * 900000).toString();
+      sessionStorage.setItem('carrotRoomPin', currentRoomPin);
       document.getElementById('roomPinDisplay').innerText = currentRoomPin;
       document.getElementById('qrRoomPinLabel').innerText = `PIN: ${currentRoomPin}`;
 
