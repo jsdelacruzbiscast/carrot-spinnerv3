@@ -90,7 +90,7 @@
 
       btn.disabled = true;
       status.className = '';
-      status.textContent = 'Registering name...';
+      status.textContent = 'Submitting entry...';
 
       fetch(ENDPOINT, {
         method: 'POST',
@@ -101,7 +101,7 @@
       .then(data => {
         if (data.status === 'SUCCESS') {
           status.className = 'success';
-          status.textContent = "You're in! Watch the screen.";
+          status.textContent = "You're registered! Look at the main screen.";
           document.getElementById('fullName').value = '';
         } else if (data.status === 'EXISTS') {
           status.className = 'error';
@@ -113,7 +113,7 @@
       })
       .catch(() => {
         status.className = 'error';
-        status.textContent = 'Network error. Retry again.';
+        status.textContent = 'Network error. Try again.';
       })
       .finally(() => { btn.disabled = false; });
     });
