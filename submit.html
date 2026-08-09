@@ -21,16 +21,14 @@
 <body class="min-h-screen flex items-center justify-center p-4">
 
   <div class="brand-card w-full max-w-md p-6 rounded-2xl shadow-2xl space-y-6 text-center">
-    <!-- Header -->
     <div class="space-y-2">
-      <div class="inline-block p-3 rounded-full bg-maroon-900/50 border border-amber-500/30 mb-2">
+      <div class="inline-block p-3 rounded-full bg-red-950/60 border border-amber-500/30 mb-2">
         <span class="text-3xl">🎯</span>
       </div>
       <h1 class="text-2xl font-black text-amber-400 tracking-wide">BISCAST SDS</h1>
       <p class="text-xs text-slate-400 uppercase tracking-widest font-semibold">Student Development Services</p>
     </div>
 
-    <!-- Submission Form -->
     <div id="formContainer" class="space-y-4 text-left">
       <div>
         <label class="block text-xs font-bold text-amber-300 uppercase mb-1">Room Session PIN</label>
@@ -50,7 +48,6 @@
       </button>
     </div>
 
-    <!-- Alert Feedback -->
     <div id="statusAlert" class="hidden p-4 rounded-xl text-sm font-semibold"></div>
   </div>
 
@@ -58,19 +55,25 @@
     // PASTE YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL HERE:
     const API_URL = "https://script.google.com/macros/s/AKfycbyKGHEUW7PzF3mlkQuPDs7j8imrgNi-aTQKLyApPLDCfarpjo_01mNc6kR8area5sM8/exec";
 
-    // Auto-fill Room PIN from URL parameter if available
     window.addEventListener('DOMContentLoaded', () => {
       const urlParams = new URLSearchParams(window.location.search);
       const pinParam = urlParams.get('pin');
       if (pinParam) {
         document.getElementById('pinInput').value = pinParam;
+        checkAlreadyRegistered(pinParam);
       }
     });
+
+    function checkAlreadyRegistered(pin) {
+      if (localStorage.getItem('registered_room_' + pin)) {
+        showAlert(`You are already registered for Room #${pin}! Look at the main screen.`, 'bg-amber-900/80 text-amber-200 border border-amber-500');
+        document.getElementById('formContainer').classList.add('hidden');
+      }
+    }
 
     async function submitEntry() {
       const pin = document.getElementById('pinInput').value.trim();
       const name = document.getElementById('nameInput').value.trim();
-      const alertBox = document.getElementById('statusAlert');
       const submitBtn = document.getElementById('submitBtn');
 
       if (!name) {
@@ -95,6 +98,7 @@
         const result = await response.json();
 
         if (result.status === 'success') {
+          if (pin) localStorage.setItem('registered_room_' + pin, name);
           showAlert("You're in! Look at the main presentation screen.", 'bg-emerald-900/80 text-emerald-200 border border-emerald-500');
           document.getElementById('formContainer').classList.add('hidden');
         } else {
