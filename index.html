@@ -53,7 +53,7 @@
       <span class="text-3xl">🎰</span>
       <div>
         <h1 class="text-xl font-black tracking-wide text-amber-400">BISCAST SDS SPINNER</h1>
-        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v2.2 (v3.2 Multi-Tenant)</p>
+        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v2.2 (v3.2 Isolation & Export Engine)</p>
       </div>
     </div>
 
@@ -114,10 +114,15 @@
           </div>
 
           <div class="glass-card p-6 rounded-2xl space-y-3">
-            <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center justify-between">
-              <span>🏆 Draw History</span>
-              <span id="winnerCount" class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">0</span>
-            </h3>
+            <div class="flex items-center justify-between">
+              <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                <span>🏆 Draw History</span>
+                <span id="winnerCount" class="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full">0</span>
+              </h3>
+              <button onclick="exportWinnersCSV()" class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-xs transition-all flex items-center gap-1">
+                <span>📥</span><span>Export CSV</span>
+              </button>
+            </div>
             <ul id="winnerList" class="space-y-2 max-h-[220px] overflow-y-auto pr-2 text-sm text-slate-300">
               <li class="text-xs text-slate-500 italic">No winners drawn yet.</li>
             </ul>
@@ -163,7 +168,12 @@
         </div>
 
         <div>
-          <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Raw Participant List (One per line)</label>
+          <div class="flex items-center justify-between mb-2">
+            <label class="text-xs font-bold text-slate-400 uppercase">Raw Participant List (One per line)</label>
+            <button onclick="exportRosterCSV()" class="px-3 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-xs transition-all border border-amber-500/30 flex items-center gap-1">
+              <span>📥</span><span>Export Roster (CSV)</span>
+            </button>
+          </div>
           <textarea id="manualEntries" rows="10" oninput="handleManualTyping()"
                     class="w-full p-4 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 font-mono text-sm focus:outline-none focus:border-amber-400"
                     placeholder="Enter participant names here..."></textarea>
@@ -184,16 +194,28 @@
           <p class="text-xs text-slate-400">Randomly group active roster participants using Fisher-Yates shuffle algorithms</p>
         </div>
 
-        <div class="flex flex-wrap items-center gap-4">
+        <div class="flex flex-wrap items-center gap-3">
           <input type="number" id="teamCountInput" min="2" max="20" value="4" 
-                 class="w-32 px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 font-bold text-center text-base focus:outline-none focus:border-amber-400">
+                 class="w-28 px-4 py-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-100 font-bold text-center text-base focus:outline-none focus:border-amber-400">
+          
           <button onclick="generateTeams()" 
                   class="px-6 py-3 rounded-xl bg-amber-600 hover:bg-amber-500 text-slate-950 font-bold text-sm transition-all">
             Generate Random Groups
           </button>
+          
           <button onclick="copyTeamsToClipboard()" 
-                  class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all">
-            Copy Teams
+                  class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-sm transition-all flex items-center gap-1">
+            <span>📋</span><span>Copy</span>
+          </button>
+
+          <button onclick="exportTeamsCSV()" 
+                  class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-amber-400 font-bold text-sm transition-all border border-amber-500/30 flex items-center gap-1">
+            <span>📥</span><span>Export CSV</span>
+          </button>
+
+          <button id="saveTeamsSheetBtn" onclick="saveTeamsToSheets()" 
+                  class="px-4 py-3 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-emerald-100 font-bold text-sm transition-all flex items-center gap-1">
+            <span>☁️</span><span>Save to Google Sheets</span>
           </button>
         </div>
 
@@ -278,6 +300,19 @@
     let modalTimerInterval = null;
     let generatedTeamsData = [];
 
+    // Helper: Universal CSV Downloader Engine
+    function downloadCSV(filename, csvContent) {
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
     // Web Audio Initialization
     function initAudio() {
       if (!audioCtx) {
@@ -344,7 +379,6 @@
       }
     }
 
-    // Fixed Robust QR Code Routing Logic
     function updateQRCode() {
       const qrContainer = document.getElementById('qrcode');
       qrContainer.innerHTML = '';
@@ -418,7 +452,6 @@
       fetchLiveRoster();
     }
 
-    // High-DPI Responsive Canvas Engine (Restored 5mm Edge Alignment)
     function setupCanvasResizer() {
       window.addEventListener('resize', resizeCanvas);
       resizeCanvas();
@@ -450,7 +483,7 @@
       const outsideRadius = (width / 2) - 10;
       const insideRadius = Math.max(20, Math.floor(width * 0.08));
       
-      const margin5mm = 19; // Exact 5mm alignment allowance (~19px)
+      const margin5mm = 19;
       const textRadius = Math.max(10, outsideRadius - margin5mm);
 
       ctx.save();
@@ -480,7 +513,6 @@
         ctx.lineWidth = 1.5;
         ctx.stroke();
 
-        // Horizontal Slice Labeling with N > 60 Density Protection
         if (roster.length <= 60) {
           ctx.save();
           ctx.fillStyle = (i % 2 === 1) ? '#800000' : '#ffffff';
@@ -521,7 +553,6 @@
       ctx.restore();
     }
 
-    // Extended 4-8 Second Rotation Physics
     let spinAngleStart = 0;
     let spinTime = 0;
     let spinTimeTotal = 0;
@@ -534,7 +565,7 @@
 
       spinAngleStart = Math.random() * 10 + 20;
       spinTime = 0;
-      spinTimeTotal = Math.random() * 4000 + 4000; // 4-8 second spin
+      spinTimeTotal = Math.random() * 4000 + 4000;
       lastTickAngle = startAngle;
 
       rotateWheel();
@@ -644,6 +675,34 @@
       list.innerHTML = winnersList.map(w => `<li class="bg-slate-900/60 p-2 rounded-lg border border-slate-800 font-semibold text-amber-300">🏆 ${w}</li>`).join('');
     }
 
+    // EXPORT FUNCTION 1: Draw Winners CSV
+    function exportWinnersCSV() {
+      if (winnersList.length === 0) {
+        alert('No draw winners recorded to export.');
+        return;
+      }
+      let csv = 'Sequence,Winner Name,Room PIN,Export Timestamp\n';
+      winnersList.forEach((winner, idx) => {
+        const seq = winnersList.length - idx;
+        const timeStr = new Date().toLocaleString();
+        csv += `"${seq}","${winner.replace(/"/g, '""')}","${roomPin || 'N/A'}","${timeStr}"\n`;
+      });
+      downloadCSV(`Draw_Winners_Room_${roomPin || 'Session'}.csv`, csv);
+    }
+
+    // EXPORT FUNCTION 2: Active Roster CSV
+    function exportRosterCSV() {
+      if (roster.length === 0) {
+        alert('Active roster is empty.');
+        return;
+      }
+      let csv = 'Index,Participant Name\n';
+      roster.forEach((name, idx) => {
+        csv += `"${idx + 1}","${name.replace(/"/g, '""')}"\n`;
+      });
+      downloadCSV(`Active_Roster_Room_${roomPin || 'Session'}.csv`, csv);
+    }
+
     function resetRoster() {
       if (confirm('Reset draw history and reload live roster?')) {
         winnersList = [];
@@ -709,7 +768,6 @@
       }
     });
 
-    // Form-Masked Hotkey Controls
     function setupHotkeys() {
       window.addEventListener('keydown', (e) => {
         const activeTag = document.activeElement ? document.activeElement.tagName : '';
@@ -776,6 +834,57 @@
       navigator.clipboard.writeText(text).then(() => {
         alert('Team partitions copied to clipboard!');
       });
+    }
+
+    // EXPORT FUNCTION 3: Breakout Teams CSV
+    function exportTeamsCSV() {
+      if (!generatedTeamsData || generatedTeamsData.length === 0) {
+        alert('Please generate teams first.');
+        return;
+      }
+      let csv = 'Team Label,Member Name\n';
+      generatedTeamsData.forEach((team, idx) => {
+        team.forEach(member => {
+          csv += `"Team ${idx + 1}","${member.replace(/"/g, '""')}"\n`;
+        });
+      });
+      downloadCSV(`Breakout_Teams_Room_${roomPin || 'Session'}.csv`, csv);
+    }
+
+    // EXPORT FUNCTION 4: Save Teams directly to Google Sheets
+    async function saveTeamsToSheets() {
+      if (!generatedTeamsData || generatedTeamsData.length === 0) {
+        alert('Please generate teams first.');
+        return;
+      }
+
+      const saveBtn = document.getElementById('saveTeamsSheetBtn');
+      saveBtn.disabled = true;
+      saveBtn.innerText = 'Saving...';
+
+      try {
+        const response = await fetch(CONFIG.API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            action: 'exportTeams',
+            pin: roomPin,
+            teams: generatedTeamsData
+          })
+        });
+
+        const result = await response.json();
+        if (result.status === 'success') {
+          alert(`Teams exported successfully to tab "${result.sheetName}" in Google Sheets!`);
+        } else {
+          alert('Failed to save teams: ' + (result.message || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Network error saving teams to Google Sheets.');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<span>☁️</span><span>Save to Google Sheets</span>';
+      }
     }
   </script>
 </body>
