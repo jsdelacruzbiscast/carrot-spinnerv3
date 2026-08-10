@@ -64,13 +64,42 @@
     #statusMsg { margin-top: 1rem; font-size: 0.9rem; font-weight: bold; }
     .success { color: #4ADE80; }
     .error { color: #F87171; }
+
+    #headcountMsg {
+      margin-bottom: 1rem;
+      font-size: 0.8rem;
+      color: var(--gold);
+      opacity: 0.85;
+    }
+
+    .reactionBar {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 1.25rem;
+    }
+    .reactionBtn {
+      width: auto;
+      flex: none;
+      padding: 8px 12px;
+      font-size: 1.3rem;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      box-shadow: none;
+      transition: transform 0.1s ease;
+    }
+    .reactionBtn:active {
+      transform: scale(0.9);
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>BISCAST SDS</h2>
     <p>Enter your full name to join the live draw roster.</p>
-    
+    <div id="headcountMsg"></div>
+
     <form id="regForm">
       <div class="input-group">
         <label for="roomPin">Room PIN</label>
@@ -83,11 +112,70 @@
       <button type="submit" id="submitBtn">Join Spinner</button>
     </form>
     <div id="statusMsg"></div>
+
+    <div class="reactionBar" id="reactionBar">
+      <button type="button" class="reactionBtn" onclick="sendReaction('👍')">👍</button>
+      <button type="button" class="reactionBtn" onclick="sendReaction('❤️')">❤️</button>
+      <button type="button" class="reactionBtn" onclick="sendReaction('😂')">😂</button>
+      <button type="button" class="reactionBtn" onclick="sendReaction('🎉')">🎉</button>
+      <button type="button" class="reactionBtn" onclick="sendReaction('👏')">👏</button>
+    </div>
   </div>
+
+  <!-- Firebase (Realtime Database) -- powers the live headcount and emoji
+       reactions. Use the exact same project/config as index.html. -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <script>
     // Paste your Web App URL here
     const ENDPOINT = "https://script.google.com/macros/s/AKfycbwHinZJKlrzpFN8Lbc9d46gNbIYH_H9-BsY2CDBWRD51i4fpDfdTBaz4wNrm5iFmJhUnQ/exec";
+
+    // Fill these in from the Firebase console -- same project/values used in
+    // index.html's FIREBASE_CONFIG.
+    const FIREBASE_CONFIG = {
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      databaseURL: "https://YOUR-PROJECT-default-rtdb.YOUR-REGION.firebasedatabase.app"
+    };
+
+    let firebaseDb = null;
+    let headcountRef = null;
+
+    try {
+      if (FIREBASE_CONFIG.apiKey.indexOf("YOUR_FIREBASE") === -1) {
+        firebase.initializeApp(FIREBASE_CONFIG);
+        firebaseDb = firebase.database();
+      }
+    } catch (err) {
+      console.warn("Firebase init failed (headcount/reactions disabled):", err);
+    }
+
+    /** Live "N people have joined" readout, updates instantly via Firebase. */
+    function subscribeHeadcount(pin) {
+      if (!firebaseDb || !pin) return;
+      if (headcountRef) headcountRef.off();
+
+      headcountRef = firebaseDb.ref(`rooms/${pin}/roster`);
+      headcountRef.on('value', (snapshot) => {
+        const arr = snapshot.val();
+        const count = Array.isArray(arr) ? arr.filter(Boolean).length : 0;
+        const el = document.getElementById('headcountMsg');
+        if (el) el.textContent = count === 0 ? 'Be the first to join!' : `${count} ${count === 1 ? 'person has' : 'people have'} joined`;
+      });
+    }
+
+    /**
+     * Reactions are ephemeral engagement pings, not a permanent record, so
+     * they write straight to Firebase from the browser instead of round-
+     * tripping through Apps Script -- lower latency, and consistent with the
+     * public write rules already in place on the rooms/ path.
+     */
+    function sendReaction(emoji) {
+      if (!firebaseDb) return;
+      const pin = pinInput.value.trim();
+      if (!pin) return;
+      firebaseDb.ref(`rooms/${pin}/reactions`).push({ emoji: emoji, ts: Date.now() }).catch(() => {});
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     const pinParam = urlParams.get('pin');
@@ -95,8 +183,12 @@
     
     if (pinParam) {
       pinInput.value = pinParam;
+      subscribeHeadcount(pinParam);
     } else {
       pinInput.removeAttribute('readonly');
+      // No PIN in the URL (manual entry) -- start tracking the headcount
+      // once the presenter's PIN is actually typed in.
+      pinInput.addEventListener('change', () => subscribeHeadcount(pinInput.value.trim()));
     }
 
     document.getElementById('regForm').addEventListener('submit', function(e) {
@@ -126,6 +218,9 @@
         } else if (data.status === 'EXISTS') {
           status.className = 'error';
           status.textContent = 'Name already registered in this room.';
+        } else if (data.status === 'LOCKED') {
+          status.className = 'error';
+          status.textContent = 'Registration is closed for this room -- the draw is starting.';
         } else {
           status.className = 'error';
           status.textContent = data.message || 'Error joining room.';
