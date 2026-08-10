@@ -15,6 +15,29 @@
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 
   <style>
+    /* Pointer "clack" bounce, triggered each time the wheel crosses a peg */
+    @keyframes pegBounce {
+      0%   { transform: translateY(-4px) rotate(0deg); }
+      30%  { transform: translateY(-2px) rotate(-10deg); }
+      100% { transform: translateY(-4px) rotate(0deg); }
+    }
+    .peg-bounce {
+      animation: pegBounce 0.15s ease-out;
+    }
+
+    /* Audience reactions floating up over the wheel */
+    .floating-reaction {
+      position: absolute;
+      bottom: 0;
+      font-size: 2rem;
+      animation: floatUpReaction 2.5s ease-out forwards;
+    }
+    @keyframes floatUpReaction {
+      0%   { transform: translateY(0) translateX(0) scale(0.7); opacity: 0; }
+      12%  { opacity: 1; transform: translateY(-20px) scale(1); }
+      100% { transform: translateY(-260px) translateX(var(--drift, 0px)); opacity: 0; }
+    }
+
     /* Custom Scrollbars */
     ::-webkit-scrollbar {
       width: 6px;
@@ -42,6 +65,7 @@
   </style>
 </head>
 <body class="bg-slate-900 text-slate-100 font-sans min-h-screen flex flex-col overflow-x-hidden">
+  <canvas id="confettiCanvas" style="position:fixed; inset:0; width:100vw; height:100vh; pointer-events:none; z-index:9999;"></canvas>
 
   <!-- Header / Navigation Bar -->
   <header class="bg-slate-800/80 backdrop-blur border-b border-slate-700 px-6 py-3 flex items-center justify-between sticky top-0 z-30">
@@ -53,7 +77,7 @@
         <h1 class="text-2xl font-bold bg-gradient-to-r from-orange-400 to-amber-300 bg-clip-text text-transparent">
           Carrot Spinner
         </h1>
-        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v3.3</p>
+        <p class="text-xs text-slate-400 font-medium">jonatzdelacruz | v3.5</p>
       </div>
     </div>
 
@@ -63,7 +87,11 @@
         <span class="text-xs uppercase tracking-wider text-slate-400 font-bold">Room PIN:</span>
         <span id="roomPinDisplay" class="text-xl font-extrabold text-amber-400 font-mono">------</span>
       </div>
-      
+
+      <button onclick="togglePresentationMode()" title="Presentation mode (F)" class="bg-slate-700 hover:bg-slate-600 text-slate-200 w-9 h-9 rounded-xl transition flex items-center justify-center">
+        <i id="presentationModeIcon" class="fa-solid fa-expand"></i>
+      </button>
+
       <button onclick="openQRModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold px-4 py-2 rounded-xl transition flex items-center space-x-2 shadow-lg shadow-indigo-600/20">
         <i class="fa-solid fa-qrcode"></i>
         <span>Show QR</span>
@@ -83,9 +111,12 @@
     <section class="lg:col-span-8 xl:col-span-9 bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4 flex flex-col items-center justify-center relative min-h-[500px]">
       
       <!-- Top Pointer Arrow (Yellow Triangle) -->
-      <div class="absolute top-2 z-10 text-amber-400 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] transform -translate-y-1">
+      <div id="wheelPointer" class="absolute top-2 z-10 text-amber-400 drop-shadow-[0_4px_8px_rgba(0,0,0,0.8)] transform -translate-y-1">
         <i class="fa-solid fa-caret-down text-5xl"></i>
       </div>
+
+      <!-- Floating audience reactions land here -->
+      <div id="reactionLayer" class="absolute inset-0 overflow-hidden pointer-events-none z-20"></div>
 
       <!-- Container for Canvas -->
       <div id="canvasContainer" class="w-full flex-1 flex items-center justify-center relative max-h-[calc(100vh-120px)]">
@@ -94,7 +125,7 @@
     </section>
 
     <!-- COLUMN 2: Tabbed Sidebar Workspace -->
-    <section class="lg:col-span-4 xl:col-span-3 flex flex-col bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4">
+    <section id="sidebarPanel" class="lg:col-span-4 xl:col-span-3 flex flex-col bg-slate-800/40 border border-slate-700/60 rounded-2xl p-4">
       
       <!-- Tab Header Switcher Buttons -->
       <div class="flex bg-slate-900/80 p-1 rounded-xl border border-slate-700/80 mb-4 gap-1">
@@ -128,13 +159,25 @@
           </button>
         </div>
 
+        <!-- Per-entry removal: deletes from the Sheet itself (via removeName),
+             not just the local textarea, so it can't come back on the next sync. -->
+        <div>
+          <span class="text-[10px] uppercase tracking-wide text-slate-500">Manage Entries (tap &times; to remove)</span>
+          <div id="rosterChipList" class="flex flex-wrap gap-1.5 mt-1.5 max-h-[90px] overflow-y-auto"></div>
+        </div>
+
         <!-- Draw History Log -->
         <div class="flex-1 flex flex-col pt-2 border-t border-slate-700/60">
           <div class="flex items-center justify-between mb-2">
             <span class="text-xs font-bold uppercase tracking-wide text-amber-400 flex items-center gap-1">
               <i class="fa-solid fa-trophy text-xs"></i> Draw History
             </span>
-            <button onclick="clearHistory()" class="text-slate-500 hover:text-red-400 text-xs transition">Clear</button>
+            <div class="flex items-center gap-3">
+              <button id="undoSpinBtn" onclick="undoLastSpin()" class="text-slate-500 hover:text-amber-400 text-xs transition hidden">
+                <i class="fa-solid fa-rotate-left mr-1"></i>Undo
+              </button>
+              <button onclick="clearHistory()" class="text-slate-500 hover:text-red-400 text-xs transition">Clear</button>
+            </div>
           </div>
           <div id="drawHistoryLog" class="flex-1 bg-slate-900/80 border border-slate-700 rounded-xl p-2 overflow-y-auto max-h-[160px] space-y-1">
             <p class="text-xs text-slate-500 italic text-center py-3">No winners drawn yet.</p>
@@ -190,6 +233,9 @@
 
         <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-2">
           <span class="text-xs font-bold uppercase tracking-wide text-slate-300 block">Room Controls</span>
+          <button id="roomLockBtn" onclick="toggleRoomLock()" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
+            <i class="fa-solid fa-lock-open"></i> Close Entries
+          </button>
           <button onclick="initRoom(true)" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
             <i class="fa-solid fa-rotate-right"></i> Regenerate Room PIN
           </button>
@@ -263,11 +309,199 @@
     let spinAngleStart = 10;
     let spinTime = 0;
     let spinTimeTotal = 0;
+    let highlightIndex = -1; // slice index to glow-pulse right before the winner modal opens
+
+    let lastTickBoundary = 0;  // cumulative slice-boundary count already ticked past this spin
+    let struckPegIndex = -1;   // which peg is currently mid-flash
+    let struckPegUntil = 0;    // performance.now() timestamp when that flash ends
+    let audioCtx = null;       // lazily created on first user gesture (autoplay policies)
+
+    let roomLocked = false;       // presenter's "Close Entries" toggle state
+    let presentationMode = false; // sidebar hidden / wheel maximized
+    let reactionsRef = null;      // active Firebase listener for audience emoji reactions
+    let lastSpinSnapshot = null;  // enough state to undo the most recent spin
 
     const colors = [
       "#1E2433", "#D97706", "#0F766E", "#4338CA", "#0284C7", "#7C3AED", "#881337"
     ];
     const orbColors = ["#3B82F6", "#00BFFF", "#FFFFFF", "#22C55E", "#38BDF8", "#3B82F6", "#00BFFF", "#FFFFFF", "#22C55E", "#38BDF8"];
+
+    // Lightens (positive percent) or darkens (negative percent) a "#RRGGBB"
+    // color. Used to build a radial gradient per slice instead of a flat fill.
+    function shadeColor(hex, percent) {
+      const num = parseInt(hex.replace("#", ""), 16);
+      const amt = Math.round(2.55 * percent);
+      let r = (num >> 16) + amt;
+      let g = ((num >> 8) & 0x00FF) + amt;
+      let b = (num & 0x0000FF) + amt;
+      r = Math.max(Math.min(255, r), 0);
+      g = Math.max(Math.min(255, g), 0);
+      b = Math.max(Math.min(255, b), 0);
+      return "#" + (0x1000000 + r * 0x10000 + g * 0x100 + b).toString(16).slice(1);
+    }
+
+    // Perceptual luminance of a "#RRGGBB" color, used to pick readable label
+    // text color automatically if the slice palette ever changes to include
+    // lighter tones.
+    function relativeLuminance(hex) {
+      const num = parseInt(hex.replace("#", ""), 16);
+      const r = (num >> 16) & 0xFF, g = (num >> 8) & 0xFF, b = num & 0xFF;
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    }
+
+    /**
+     * Draws a slice label at the given radius, in the current (already
+     * rotated-to-bisector) canvas context. Straight mode anchors the text's
+     * outward edge at `radius` (textAlign "right"). Curved mode lays every
+     * letter out along the arc at that same radius instead, which keeps
+     * legibility on crowded wheels where straight text would run out of room
+     * even after truncation. Returns the label's total rendered width so the
+     * caller can position the orb marker relative to it.
+     */
+    function drawSliceLabel(text, radius, curved) {
+      if (!curved) {
+        ctx.textAlign = "right";
+        ctx.textBaseline = "middle";
+        ctx.fillText(text, radius, 0);
+        return ctx.measureText(text).width;
+      }
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const letters = [...text];
+      const widths = letters.map(ch => ctx.measureText(ch).width);
+      const totalWidth = widths.reduce((a, b) => a + b, 0);
+      const totalAngle = totalWidth / radius; // arc length = radius * angle
+
+      let angle = -totalAngle / 2;
+      for (let i = 0; i < letters.length; i++) {
+        const halfCharAngle = (widths[i] / 2) / radius;
+        ctx.save();
+        ctx.rotate(angle + halfCharAngle);
+        ctx.translate(radius, 0);
+        ctx.rotate(Math.PI / 2); // orient each letter upright/tangential to the rim
+        ctx.fillText(letters[i], 0, 0);
+        ctx.restore();
+        angle += widths[i] / radius;
+      }
+      return totalWidth;
+    }
+
+    /**
+     * Small "marquee" bulbs set into the bezel just outside the slices.
+     * Chases while spinning, flashes solid gold during the winner-glow beat,
+     * and sits dim otherwise -- purely decorative, mirrors a real prize wheel.
+     */
+    function drawRimLights(outsideRadius) {
+      const numLights = 28;
+      const lightRadius = outsideRadius + 8;
+
+      for (let i = 0; i < numLights; i++) {
+        const theta = (i / numLights) * Math.PI * 2;
+        const x = Math.cos(theta) * lightRadius;
+        const y = Math.sin(theta) * lightRadius;
+
+        let lit;
+        if (highlightIndex !== -1) {
+          lit = true;
+        } else if (isSpinning) {
+          lit = ((i + Math.floor(spinTime / 90)) % 4) === 0;
+        } else {
+          lit = false;
+        }
+
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, Math.PI * 2);
+        if (lit) {
+          ctx.shadowColor = "#FFD700";
+          ctx.shadowBlur = 10;
+          ctx.fillStyle = "#FFD700";
+        } else {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "rgba(250, 204, 21, 0.18)";
+        }
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    /**
+     * Small metal peg knobs, one per slice boundary, sitting just outside the
+     * slice edge (inward of the rim lights). Flashes gold briefly whenever
+     * the pointer "strikes" it during a spin -- paired with playTick() and
+     * bouncePointer() for the classic prize-wheel clack feel.
+     */
+    function drawRimPegs(outsideRadius, arc) {
+      const pegRadius = outsideRadius + 3;
+      const now = performance.now();
+
+      for (let i = 0; i < roster.length; i++) {
+        const boundaryAngle = startAngle + i * arc;
+        const x = Math.cos(boundaryAngle) * pegRadius;
+        const y = Math.sin(boundaryAngle) * pegRadius;
+        const isStruck = i === struckPegIndex && now < struckPegUntil;
+
+        ctx.beginPath();
+        ctx.arc(x, y, isStruck ? 4.5 : 3, 0, Math.PI * 2);
+        if (isStruck) {
+          ctx.shadowColor = "#FFD700";
+          ctx.shadowBlur = 12;
+          ctx.fillStyle = "#FFD700";
+        } else {
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = "#94a3b8";
+        }
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+    }
+
+    // --- Web Audio tick engine -------------------------------------------
+    // The Settings tab already had an "Audio Sound Effects" toggle with
+    // nothing behind it. Wiring it up here, paired with the pegs above.
+
+    function ensureAudioContext() {
+      if (!audioCtx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return; // unsupported browser -- fail silently, pegs still work visually
+        audioCtx = new AC();
+      }
+      if (audioCtx.state === "suspended") {
+        audioCtx.resume();
+      }
+    }
+
+    // Pre-warm on first user interaction so the very first tick of the first
+    // spin isn't delayed by AudioContext startup latency (autoplay policies
+    // require a user gesture before audio can start anyway).
+    document.addEventListener("pointerdown", ensureAudioContext, { once: true });
+
+    function playTick() {
+      const toggle = document.getElementById("audioToggle");
+      if (toggle && !toggle.checked) return;
+      ensureAudioContext();
+      if (!audioCtx) return;
+
+      const now = audioCtx.currentTime;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = "square";
+      osc.frequency.setValueAtTime(1000, now);
+      gain.gain.setValueAtTime(0.18, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    }
+
+    function bouncePointer() {
+      const pointer = document.getElementById("wheelPointer");
+      if (!pointer) return;
+      pointer.classList.remove("peg-bounce");
+      void pointer.offsetWidth; // force reflow so rapid re-triggers restart the animation
+      pointer.classList.add("peg-bounce");
+    }
 
     const canvas = document.getElementById('wheelCanvas');
     const ctx = canvas.getContext('2d');
@@ -290,9 +524,10 @@
       rosterInput.addEventListener('focus', () => { isEditingRoster = true; });
       rosterInput.addEventListener('blur', () => { isEditingRoster = false; });
 
-      // Presenter hotkeys: Space = spin, Escape = close winner modal.
-      // Ignored while the user is typing in any input/textarea so hitting
-      // Space to type a name doesn't accidentally trigger a spin.
+      // Presenter hotkeys: Space = spin, Escape = close winner modal, F =
+      // toggle presentation mode. Ignored while the user is typing in any
+      // input/textarea so hitting Space to type a name doesn't accidentally
+      // trigger a spin.
       document.addEventListener('keydown', (e) => {
         const tag = document.activeElement && document.activeElement.tagName;
         const isTyping = tag === 'INPUT' || tag === 'TEXTAREA';
@@ -304,6 +539,8 @@
         } else if (e.key === 'Escape') {
           closeWinnerModal();
           closeQRModal();
+        } else if (e.key === 'f' || e.key === 'F') {
+          togglePresentationMode();
         }
       });
     });
@@ -357,6 +594,7 @@
      */
     function attachRoomListener(pin) {
       if (currentRoomRef) currentRoomRef.off(); // detach the previous room's listener
+      if (reactionsRef) reactionsRef.off();
 
       const statusEl = document.getElementById('syncStatus');
       currentRoomRef = firebaseDb.ref(`rooms/${pin}/roster`);
@@ -381,6 +619,90 @@
         statusEl.textContent = `Live sync error: ${error.message}`;
         statusEl.className = 'text-[10px] text-red-400 -mt-2';
       });
+
+      // Audience-sent emoji reactions (from submit.html) float up on screen,
+      // then get cleared right after -- this is a transient broadcast
+      // channel, not something that needs to persist.
+      reactionsRef = firebaseDb.ref(`rooms/${pin}/reactions`);
+      reactionsRef.on('child_added', (snapshot) => {
+        const data = snapshot.val();
+        spawnFloatingReaction(data && data.emoji ? data.emoji : '🎉');
+        snapshot.ref.remove().catch(() => {});
+      });
+
+      // Sync the Close Entries button to whatever lock state this room
+      // already has (matters after a page reload that reused a saved PIN).
+      firebaseDb.ref(`rooms/${pin}/locked`).once('value')
+        .then(snap => { roomLocked = !!snap.val(); updateRoomLockButton(); })
+        .catch(() => { roomLocked = false; updateRoomLockButton(); });
+    }
+
+    /** Flips the room's registration-open/closed state via setRoomLock. */
+    function toggleRoomLock() {
+      const newLocked = !roomLocked;
+      if (!CONFIG.ENDPOINT) return;
+
+      fetch(CONFIG.ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'setRoomLock', pin: currentRoomPin, locked: newLocked })
+      })
+        .then(res => res.json())
+        .then(data => {
+          const statusEl = document.getElementById('syncStatus');
+          if (data.status === 'SUCCESS') {
+            roomLocked = newLocked;
+            updateRoomLockButton();
+          } else if (statusEl) {
+            statusEl.textContent = `Could not update lock: ${data.message || 'unknown error'}`;
+            statusEl.className = 'text-[10px] text-red-400 -mt-2';
+          }
+        })
+        .catch(err => console.warn('setRoomLock failed:', err));
+    }
+
+    function updateRoomLockButton() {
+      const btn = document.getElementById('roomLockBtn');
+      if (!btn) return;
+      if (roomLocked) {
+        btn.innerHTML = '<i class="fa-solid fa-lock"></i> Reopen Entries';
+        btn.classList.remove('bg-slate-700', 'hover:bg-slate-600');
+        btn.classList.add('bg-red-700', 'hover:bg-red-600');
+      } else {
+        btn.innerHTML = '<i class="fa-solid fa-lock-open"></i> Close Entries';
+        btn.classList.remove('bg-red-700', 'hover:bg-red-600');
+        btn.classList.add('bg-slate-700', 'hover:bg-slate-600');
+      }
+    }
+
+    /** Spawns one floating emoji over the wheel, driven by audience reactions. */
+    function spawnFloatingReaction(emoji) {
+      const layer = document.getElementById('reactionLayer');
+      if (!layer) return;
+      const el = document.createElement('div');
+      el.className = 'floating-reaction';
+      el.textContent = emoji;
+      el.style.left = `${10 + Math.random() * 80}%`;
+      el.style.setProperty('--drift', `${Math.round((Math.random() - 0.5) * 60)}px`);
+      layer.appendChild(el);
+      setTimeout(() => el.remove(), 2600);
+    }
+
+    /** Hides the sidebar and expands the wheel for a clean projector view. */
+    function togglePresentationMode() {
+      presentationMode = !presentationMode;
+      const sidebar = document.getElementById('sidebarPanel');
+      const icon = document.getElementById('presentationModeIcon');
+      if (sidebar) sidebar.classList.toggle('hidden', presentationMode);
+      if (icon) icon.className = presentationMode ? 'fa-solid fa-compress' : 'fa-solid fa-expand';
+
+      if (presentationMode && document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {}); // best-effort; some embeds disallow it
+      } else if (!presentationMode && document.exitFullscreen && document.fullscreenElement) {
+        document.exitFullscreen().catch(() => {});
+      }
+
+      setTimeout(resizeCanvas, 50); // let the layout settle before re-measuring the canvas
     }
 
     function resizeCanvas() {
@@ -400,6 +722,65 @@
 
     function updateRosterBadge() {
       document.getElementById('rosterCountBadge').innerText = `${roster.length} Names`;
+      renderRosterChips();
+    }
+
+    /**
+     * Renders the "tap x to remove" chip list under the roster textarea.
+     * Built with DOM methods (not innerHTML string interpolation) since
+     * these names come straight from public, unauthenticated audience
+     * submissions -- textContent keeps that safe from HTML injection.
+     */
+    function renderRosterChips() {
+      const container = document.getElementById('rosterChipList');
+      if (!container) return;
+      container.innerHTML = '';
+
+      if (roster.length === 0) {
+        const empty = document.createElement('p');
+        empty.className = 'text-[10px] text-slate-500 italic';
+        empty.textContent = 'No entries yet.';
+        container.appendChild(empty);
+        return;
+      }
+
+      roster.forEach(name => {
+        const chip = document.createElement('span');
+        chip.className = 'inline-flex items-center gap-1 bg-slate-700/80 text-slate-200 text-[10px] px-2 py-1 rounded-full';
+
+        const label = document.createElement('span');
+        label.textContent = name;
+        chip.appendChild(label);
+
+        const removeBtn = document.createElement('button');
+        removeBtn.textContent = '\u00d7';
+        removeBtn.title = `Remove ${name}`;
+        removeBtn.className = 'text-slate-400 hover:text-red-400 leading-none font-bold';
+        removeBtn.addEventListener('click', () => removeParticipant(name));
+        chip.appendChild(removeBtn);
+
+        container.appendChild(chip);
+      });
+    }
+
+    /**
+     * Removes a single entry at the source (the Sheet), not just the local
+     * view -- otherwise the next Firebase sync would just bring it right
+     * back. Updates the local roster optimistically for a snappy feel;
+     * Firebase's own push confirms/corrects shortly after regardless.
+     */
+    function removeParticipant(name) {
+      roster = roster.filter(n => n !== name);
+      rosterInput.value = roster.join('\n');
+      updateRosterBadge();
+      drawWheel();
+
+      if (!CONFIG.ENDPOINT) return;
+      fetch(CONFIG.ENDPOINT, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'removeName', pin: currentRoomPin, name: name })
+      }).catch(err => console.warn('removeName failed:', err));
     }
 
     function drawWheel() {
@@ -429,26 +810,58 @@
       // applied), so convert mm using the standard 96px/inch assumption.
       const MM_TO_PX = 96 / 25.4;
       const LABEL_EDGE_MARGIN = 3 * MM_TO_PX; // ~11.3px gap from the rim
+      // Past this many slices, straight radial text starts getting cramped
+      // even after truncation -- switch to letters that follow the arc
+      // instead, all sitting at the same 3mm-from-rim radius.
+      const useCurvedText = roster.length > 14;
 
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
 
+      // Metallic bezel behind the slices -- also doubles as the housing for
+      // the rim marquee lights.
+      const bezelOuter = outsideRadius + 16;
       ctx.beginPath();
-      ctx.arc(0, 0, outsideRadius + 3, 0, Math.PI * 2);
-      ctx.fillStyle = "#0c1322";
+      ctx.arc(0, 0, bezelOuter, 0, Math.PI * 2);
+      const bezelGradient = ctx.createRadialGradient(0, 0, outsideRadius, 0, 0, bezelOuter);
+      bezelGradient.addColorStop(0, "#1a2236");
+      bezelGradient.addColorStop(1, "#05070c");
+      ctx.fillStyle = bezelGradient;
       ctx.fill();
 
       for (let i = 0; i < roster.length; i++) {
         const angle = startAngle + i * arc;
-        ctx.fillStyle = colors[i % colors.length];
+        const baseColor = colors[i % colors.length];
+        const isWinning = i === highlightIndex;
 
         ctx.beginPath();
         ctx.arc(0, 0, outsideRadius, angle, angle + arc, false);
         ctx.arc(0, 0, insideRadius, angle + arc, angle, true);
+
+        // Radial gradient (darker near the hub, lighter near the rim) instead
+        // of a flat fill, for a bit of dimensionality.
+        const sliceGradient = ctx.createRadialGradient(0, 0, insideRadius, 0, 0, outsideRadius);
+        sliceGradient.addColorStop(0, shadeColor(baseColor, -16));
+        sliceGradient.addColorStop(1, shadeColor(baseColor, 12));
+        ctx.fillStyle = sliceGradient;
         ctx.fill();
-        ctx.strokeStyle = '#0B0F19';
-        ctx.lineWidth = 2.5;
-        ctx.stroke();
+
+        if (isWinning) {
+          // Bright flash + gold glow on the winning slice, held briefly
+          // before the modal opens.
+          ctx.fillStyle = "rgba(255, 255, 255, 0.35)";
+          ctx.fill();
+          ctx.shadowColor = "#FFD700";
+          ctx.shadowBlur = 22;
+          ctx.strokeStyle = "#FFD700";
+          ctx.lineWidth = 4;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+        } else {
+          ctx.strokeStyle = '#0B0F19';
+          ctx.lineWidth = 2.5;
+          ctx.stroke();
+        }
 
         ctx.save();
         const textAngle = angle + arc / 2;
@@ -458,37 +871,46 @@
         // LABEL_EDGE_MARGIN in from the slice's outer boundary, rather than
         // floating at the slice's midpoint.
         const textRadius = outsideRadius - LABEL_EDGE_MARGIN;
-        ctx.fillStyle = "#FFFFFF";
         let fontSize = Math.floor(outsideRadius / (roster.length * 0.35));
         fontSize = Math.min(Math.max(fontSize, 12), 20);
         ctx.font = `bold ${fontSize}px Georgia, serif`;
-        ctx.textAlign = "right";
-        ctx.textBaseline = "middle";
+
+        // Auto-contrast: fall back to dark text if a future palette color
+        // ever turns out light, instead of hardcoding white.
+        ctx.fillStyle = relativeLuminance(baseColor) > 0.6 ? "#111111" : "#FFFFFF";
 
         let label = roster[i];
-        if (label.length > 12) label = label.substring(0, 10) + '..';
-        ctx.fillText(label, textRadius, 0);
+        if (!useCurvedText && label.length > 12) label = label.substring(0, 10) + '..';
 
-        const labelWidth = ctx.measureText(label).width;
-        const orbX = textRadius - labelWidth - 14;
-        const orbRadius = Math.max(4, fontSize * 0.38);
+        const labelWidth = drawSliceLabel(label, textRadius, useCurvedText);
 
-        const orbGradient = ctx.createRadialGradient(
-          orbX - orbRadius * 0.3, -orbRadius * 0.3, orbRadius * 0.1,
-          orbX, 0, orbRadius
-        );
-        const mainOrbColor = orbColors[i % orbColors.length];
-        orbGradient.addColorStop(0, '#FFFFFF');
-        orbGradient.addColorStop(0.4, mainOrbColor);
-        orbGradient.addColorStop(1, '#000000');
+        // Orb marker only makes sense next to straight text, where "just
+        // inward of the label" is well-defined; skip it for curved text on
+        // crowded wheels to avoid clutter.
+        if (!useCurvedText) {
+          const orbX = textRadius - labelWidth - 14;
+          const orbRadius = Math.max(4, fontSize * 0.38);
 
-        ctx.beginPath();
-        ctx.arc(orbX, 0, orbRadius, 0, Math.PI * 2);
-        ctx.fillStyle = orbGradient;
-        ctx.fill();
+          const orbGradient = ctx.createRadialGradient(
+            orbX - orbRadius * 0.3, -orbRadius * 0.3, orbRadius * 0.1,
+            orbX, 0, orbRadius
+          );
+          const mainOrbColor = orbColors[i % orbColors.length];
+          orbGradient.addColorStop(0, '#FFFFFF');
+          orbGradient.addColorStop(0.4, mainOrbColor);
+          orbGradient.addColorStop(1, '#000000');
+
+          ctx.beginPath();
+          ctx.arc(orbX, 0, orbRadius, 0, Math.PI * 2);
+          ctx.fillStyle = orbGradient;
+          ctx.fill();
+        }
 
         ctx.restore();
       }
+
+      drawRimLights(outsideRadius);
+      drawRimPegs(outsideRadius, arc);
 
       ctx.beginPath();
       ctx.arc(0, 0, insideRadius + 4, 0, Math.PI * 2);
@@ -520,6 +942,20 @@
       const angleChange = spinAngleStart * (1 - easeOut);
       
       startAngle += (angleChange * Math.PI / 180);
+
+      // Peg-tick: fire once per slice boundary crossed since the last frame.
+      // startAngle only ever increases during a spin, so this stays monotonic.
+      const arcPerPeg = (Math.PI * 2) / roster.length;
+      const currentBoundary = Math.floor(startAngle / arcPerPeg);
+      if (currentBoundary > lastTickBoundary) {
+        lastTickBoundary = currentBoundary;
+        const struck = currentBoundary % roster.length;
+        struckPegIndex = struck < 0 ? struck + roster.length : struck;
+        struckPegUntil = performance.now() + 150;
+        playTick();
+        bouncePointer();
+      }
+
       drawWheel();
       spinTimeout = setTimeout(rotateWheel, 30);
     }
@@ -530,6 +966,10 @@
       spinAngleStart = Math.random() * 10 + 15;
       spinTime = 0;
       spinTimeTotal = Math.random() * 3000 + 10000;
+
+      const arcPerPeg = (Math.PI * 2) / roster.length;
+      lastTickBoundary = Math.floor(startAngle / arcPerPeg);
+
       rotateWheel();
     }
 
@@ -541,25 +981,124 @@
       index = (index + roster.length) % roster.length;
 
       const winner = roster[index];
-      document.getElementById('winnerName').innerText = winner;
-      document.getElementById('winnerModal').classList.remove('hidden');
 
-      history.unshift({ name: winner, time: new Date().toLocaleTimeString() });
-      renderHistory();
+      // Beat 1: glow the winning slice and let the rim lights flash solid
+      // for a moment before revealing the modal, instead of an instant cut.
+      highlightIndex = index;
+      drawWheel();
 
-      const eliminate = document.getElementById('eliminateWinner').checked;
+      setTimeout(() => {
+        document.getElementById('winnerName').innerText = winner;
+        document.getElementById('winnerModal').classList.remove('hidden');
+        triggerConfetti();
+
+        const eliminate = document.getElementById('eliminateWinner').checked;
+
+        // Snapshot enough state to fully undo this spin: the winner's
+        // original slice position and whether elimination removed them.
+        lastSpinSnapshot = { winner, index, eliminate };
+        document.getElementById('undoSpinBtn').classList.remove('hidden');
+
+        history.unshift({ name: winner, time: new Date().toLocaleTimeString() });
+        renderHistory();
+
+        if (eliminate) {
+          eliminatedNames.add(winner);
+          roster.splice(index, 1);
+          rosterInput.value = roster.join('\n');
+          updateRosterBadge();
+        }
+
+        highlightIndex = -1;
+        drawWheel();
+        logWinnerToBackend(winner, eliminate);
+      }, 650);
+    }
+
+    /**
+     * Reverts the most recent spin: re-inserts the winner if they were
+     * eliminated, and removes them from the display history. Spin_Logs is
+     * left alone as an immutable audit trail -- the undo itself is recorded
+     * as a new "Undone" entry rather than deleting the original row.
+     */
+    function undoLastSpin() {
+      if (!lastSpinSnapshot) return;
+      const { winner, index, eliminate } = lastSpinSnapshot;
+
       if (eliminate) {
-        eliminatedNames.add(winner);
-        roster.splice(index, 1);
+        eliminatedNames.delete(winner);
+        if (index <= roster.length) {
+          roster.splice(index, 0, winner);
+        } else {
+          roster.push(winner);
+        }
         rosterInput.value = roster.join('\n');
         updateRosterBadge();
         drawWheel();
       }
 
-      logWinnerToBackend(winner, eliminate);
+      if (history.length > 0 && history[0].name === winner) {
+        history.shift();
+        renderHistory();
+      }
+
+      logWinnerToBackend(winner, eliminate, 'Undone');
+
+      lastSpinSnapshot = null;
+      document.getElementById('undoSpinBtn').classList.add('hidden');
     }
 
-    function logWinnerToBackend(winner, eliminate) {
+    /**
+     * Lightweight confetti burst over the whole viewport, drawn on a
+     * dedicated full-screen canvas so it isn't clipped by the wheel canvas
+     * or the modal. No external library -- just particles + gravity.
+     */
+    function triggerConfetti() {
+      const confettiCanvas = document.getElementById('confettiCanvas');
+      if (!confettiCanvas) return;
+      confettiCanvas.width = window.innerWidth;
+      confettiCanvas.height = window.innerHeight;
+      const cctx = confettiCanvas.getContext('2d');
+
+      const palette = ['#FFD700', '#800000', '#EAB308', '#F87171', '#4ADE80', '#60A5FA'];
+      const particles = Array.from({ length: 140 }, () => ({
+        x: confettiCanvas.width / 2 + (Math.random() - 0.5) * 240,
+        y: confettiCanvas.height * 0.35,
+        vx: (Math.random() - 0.5) * 11,
+        vy: Math.random() * -11 - 4,
+        size: Math.random() * 6 + 4,
+        color: palette[Math.floor(Math.random() * palette.length)],
+        rotation: Math.random() * 360,
+        rotSpeed: (Math.random() - 0.5) * 20
+      }));
+
+      let frame = 0;
+      const maxFrames = 110;
+      function step() {
+        cctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        particles.forEach(p => {
+          p.vy += 0.35; // gravity
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rotation += p.rotSpeed;
+          cctx.save();
+          cctx.translate(p.x, p.y);
+          cctx.rotate(p.rotation * Math.PI / 180);
+          cctx.fillStyle = p.color;
+          cctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+          cctx.restore();
+        });
+        frame++;
+        if (frame < maxFrames) {
+          requestAnimationFrame(step);
+        } else {
+          cctx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+        }
+      }
+      step();
+    }
+
+    function logWinnerToBackend(winner, eliminate, modeOverride) {
       if (!CONFIG.ENDPOINT) return;
       fetch(CONFIG.ENDPOINT, {
         method: 'POST',
@@ -568,7 +1107,7 @@
           action: 'logWinner',
           winner: winner,
           pin: currentRoomPin,
-          mode: eliminate ? 'Elimination' : 'Standard'
+          mode: modeOverride || (eliminate ? 'Elimination' : 'Standard')
         })
       }).catch(err => console.warn("Winner log failed:", err));
     }
@@ -579,21 +1118,38 @@
 
     function renderHistory() {
       const container = document.getElementById('drawHistoryLog');
+      container.innerHTML = '';
+
       if (history.length === 0) {
-        container.innerHTML = `<p class="text-xs text-slate-500 italic text-center py-3">No winners drawn yet.</p>`;
+        const empty = document.createElement('p');
+        empty.className = 'text-xs text-slate-500 italic text-center py-3';
+        empty.textContent = 'No winners drawn yet.';
+        container.appendChild(empty);
         return;
       }
 
-      container.innerHTML = history.map(item => `
-        <div class="flex items-center justify-between bg-slate-800/80 p-2 rounded-lg border border-slate-700/50">
-          <span class="text-xs font-semibold text-amber-300 font-serif">${item.name}</span>
-          <span class="text-[10px] text-slate-500">${item.time}</span>
-        </div>
-      `).join('');
+      history.forEach(item => {
+        const row = document.createElement('div');
+        row.className = 'flex items-center justify-between bg-slate-800/80 p-2 rounded-lg border border-slate-700/50';
+
+        const name = document.createElement('span');
+        name.className = 'text-xs font-semibold text-amber-300 font-serif';
+        name.textContent = item.name;
+
+        const time = document.createElement('span');
+        time.className = 'text-[10px] text-slate-500';
+        time.textContent = item.time;
+
+        row.appendChild(name);
+        row.appendChild(time);
+        container.appendChild(row);
+      });
     }
 
     function clearHistory() {
       history = [];
+      lastSpinSnapshot = null;
+      document.getElementById('undoSpinBtn').classList.add('hidden');
       renderHistory();
     }
 
@@ -623,12 +1179,23 @@
       });
 
       const container = document.getElementById('teamsContainer');
-      container.innerHTML = lastGeneratedTeams.map((team, idx) => `
-        <div class="bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl">
-          <span class="text-xs font-bold text-indigo-400 block mb-1">Team ${idx + 1} (${team.length})</span>
-          <p class="text-xs text-slate-300 leading-relaxed font-serif">${team.join(', ')}</p>
-        </div>
-      `).join('');
+      container.innerHTML = '';
+      lastGeneratedTeams.forEach((team, idx) => {
+        const card = document.createElement('div');
+        card.className = 'bg-slate-800/80 border border-slate-700/60 p-2.5 rounded-xl';
+
+        const title = document.createElement('span');
+        title.className = 'text-xs font-bold text-indigo-400 block mb-1';
+        title.textContent = `Team ${idx + 1} (${team.length})`;
+
+        const members = document.createElement('p');
+        members.className = 'text-xs text-slate-300 leading-relaxed font-serif';
+        members.textContent = team.join(', ');
+
+        card.appendChild(title);
+        card.appendChild(members);
+        container.appendChild(card);
+      });
     }
 
     function copyTeamsToClipboard() {
