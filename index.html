@@ -240,8 +240,8 @@
     // Fill these in from the Firebase console (Project settings > General >
     // Your apps, and Realtime Database > the URL shown at the top of that page).
     const FIREBASE_CONFIG = {
-      apiKey: "AIzaSyAraGE0A3t9Hj7LYdHYTvmKpwKA8Mv6XMc",
-      databaseURL: "https://carrot-spinner-default-rtdb.asia-southeast1.firebasedatabase.app"
+      apiKey: "YOUR_FIREBASE_API_KEY",
+      databaseURL: "https://YOUR-PROJECT-default-rtdb.YOUR-REGION.firebasedatabase.app"
     };
     firebase.initializeApp(FIREBASE_CONFIG);
     const firebaseDb = firebase.database();
@@ -425,6 +425,10 @@
       const outsideRadius = canvas.width / 2 - 15;
       const insideRadius = 32;
       const arc = (Math.PI * 2) / roster.length;
+      // Canvas units here are 1:1 with CSS px (no devicePixelRatio scaling
+      // applied), so convert mm using the standard 96px/inch assumption.
+      const MM_TO_PX = 96 / 25.4;
+      const LABEL_EDGE_MARGIN = 3 * MM_TO_PX; // ~11.3px gap from the rim
 
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -450,19 +454,23 @@
         const textAngle = angle + arc / 2;
         ctx.rotate(textAngle);
 
-        const midRadius = (outsideRadius + insideRadius) / 2 + 10;
+        // Anchor text to its outward (rim-facing) edge, exactly
+        // LABEL_EDGE_MARGIN in from the slice's outer boundary, rather than
+        // floating at the slice's midpoint.
+        const textRadius = outsideRadius - LABEL_EDGE_MARGIN;
         ctx.fillStyle = "#FFFFFF";
         let fontSize = Math.floor(outsideRadius / (roster.length * 0.35));
         fontSize = Math.min(Math.max(fontSize, 12), 20);
         ctx.font = `bold ${fontSize}px Georgia, serif`;
-        ctx.textAlign = "center";
+        ctx.textAlign = "right";
         ctx.textBaseline = "middle";
 
         let label = roster[i];
         if (label.length > 12) label = label.substring(0, 10) + '..';
-        ctx.fillText(label, midRadius, 0);
+        ctx.fillText(label, textRadius, 0);
 
-        const orbX = midRadius - (ctx.measureText(label).width / 2) - 14;
+        const labelWidth = ctx.measureText(label).width;
+        const orbX = textRadius - labelWidth - 14;
         const orbRadius = Math.max(4, fontSize * 0.38);
 
         const orbGradient = ctx.createRadialGradient(
