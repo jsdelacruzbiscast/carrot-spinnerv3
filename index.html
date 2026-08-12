@@ -306,7 +306,7 @@
     // Your apps, and Realtime Database > the URL shown at the top of that page).
     const FIREBASE_CONFIG = {
         apiKey: "AIzaSyAraGE0A3t9Hj7LYdHYTvmKpwKA8Mv6XMc",
-  databaseURL: "https://carrot-spinner-default-rtdb.asia-southeast1.firebasedatabase.app"
+        databaseURL: "https://carrot-spinner-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
     firebase.initializeApp(FIREBASE_CONFIG);
     const firebaseDb = firebase.database();
@@ -328,6 +328,7 @@
     let spinAngleStart = 10;
     let spinTime = 0;
     let spinTimeTotal = 0;
+    let currentAngularVelocity = 0; // degrees/frame -- gates whether text is worth rendering this frame
     let highlightIndex = -1; // slice index to glow-pulse right before the winner modal opens
 
     let lastTickBoundary = 0;  // cumulative slice-boundary count already ticked past this spin
@@ -370,23 +371,15 @@
     /**
      * Draws a slice label at the given radius, in the current (already
      * rotated-to-bisector) canvas context. Straight mode anchors the text's
-     * outward edge at `radius` (textAlign "right"). Curved mode lays every
-     * letter out along the arc at that same radius instead, which keeps
-     * legibility on crowded wheels where straight text would run out of room
-     * even after truncation. Returns the label's total rendered width so the
-     * caller can position the orb marker relative to it.
-     */
-    /**
-     * Draws a slice label at the given radius, in the current (already
-     * rotated-to-bisector, and already flip-corrected) canvas context.
-     * Straight mode anchors the text's outward edge at `radius` (or `-radius`
-     * when flipped, since the caller has already rotated the frame 180deg for
-     * left-half slices). Curved mode lays every letter along the arc at that
-     * same radius; when flipped, the letter order is reversed so the word
-     * still reads left-to-right for the viewer instead of backwards, while
-     * the world-space radius stays correct either way (pure rotation
-     * preserves distance from center). Returns the label's total rendered
-     * width so the caller can position the orb marker relative to it.
+     * outward edge at `radius` (or `-radius` when flipped, since the caller
+     * has already rotated the frame 180deg for left-half slices). Curved
+     * mode lays every letter along the arc at that same radius; the outer
+     * frame is NOT extra-rotated for curved text (see the caller), so each
+     * letter corrects its own orientation via `flipped` instead -- keeping
+     * the label centered on the correct world angle either way, since
+     * translate(radius, 0) preserves distance from center under pure
+     * rotation regardless of which direction "outward" currently faces.
+     * Returns the label's total rendered width.
      */
     function drawSliceLabel(text, radius, curved, flipped) {
       if (!curved) {
@@ -414,7 +407,12 @@
         ctx.save();
         ctx.rotate(angle + halfCharAngle);
         ctx.translate(radius, 0);
-        ctx.rotate(Math.PI / 2); // orient each letter upright/tangential to the rim
+        // Same sign as the straight-text fix, but applied per-letter instead
+        // of to the whole frame -- this keeps the curve centered on the
+        // correct world angle (unlike flipping the outer rotation, which
+        // would relocate the whole label to the opposite side of the wheel)
+        // while still correcting each glyph to read upright.
+        ctx.rotate(flipped ? -Math.PI / 2 : Math.PI / 2);
         ctx.fillText(letters[i], 0, 0);
         ctx.restore();
         angle += widths[i] / radius;
@@ -864,6 +862,18 @@
       ctx.fillStyle = bezelGradient;
       ctx.fill();
 
+      // During a fast spin, many slices cross the left/right flip boundary
+      // (see below) within the same second -- with a crowded wheel (12+
+      // slices) that produces a visible flicker/jumble across several
+      // labels at once, since each crossing is an instant 180deg jump. Real
+      // spinning wheels are a blur at speed anyway, so above a velocity
+      // threshold we simply don't draw legible text at all -- eliminates
+      // the flicker at its source instead of trying to smooth an inherently
+      // discontinuous flip. Text reappears once the spin has slowed enough
+      // to actually read, and always shows when idle.
+      const TEXT_VELOCITY_THRESHOLD = 5; // degrees/frame
+      const showText = !isSpinning || currentAngularVelocity < TEXT_VELOCITY_THRESHOLD;
+
       for (let i = 0; i < roster.length; i++) {
         const angle = startAngle + i * arc;
         const baseColor = colors[i % colors.length];
@@ -898,36 +908,60 @@
           ctx.stroke();
         }
 
-        ctx.save();
-        const textAngle = angle + arc / 2;
+        if (showText) {
+          ctx.save();
+          const textAngle = angle + arc / 2;
 
-        // Text on the left half of the wheel (roughly 90deg-270deg) would
-        // render completely upside-down if rotated the same way as the right
-        // half -- a plain rotation doesn't know "upright" from "inverted".
-        // Flip by an extra 180deg for that half so labels always read
-        // normally regardless of where they land on the wheel.
-        const normalizedAngle = ((textAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
-        const isFlipped = normalizedAngle > Math.PI / 2 && normalizedAngle < Math.PI * 1.5;
-        ctx.rotate(isFlipped ? textAngle + Math.PI : textAngle);
+          // Text on the left half of the wheel (roughly 90deg-270deg) would
+          // render completely upside-down if rotated the same way as the right
+          // half -- a plain rotation doesn't know "upright" from "inverted".
+          // Flip by an extra 180deg for that half so labels always read
+          // normally regardless of where they land on the wheel.
+          const normalizedAngle = ((textAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+          const isFlipped = normalizedAngle > Math.PI / 2 && normalizedAngle < Math.PI * 1.5;
 
-        // Anchor text to its outward (rim-facing) edge, exactly
-        // LABEL_EDGE_MARGIN in from the slice's outer boundary, rather than
-        // floating at the slice's midpoint.
-        const textRadius = outsideRadius - LABEL_EDGE_MARGIN;
-        let fontSize = Math.floor(outsideRadius / (roster.length * 0.35));
-        fontSize = Math.min(Math.max(fontSize, 12), 20);
-        ctx.font = `bold ${fontSize}px Georgia, serif`;
+          // The extra 180deg only belongs on straight text's OUTER rotation
+          // (it relies on the whole frame being flipped, then mirrors the
+          // anchor to compensate). Curved text centers itself on local angle
+          // 0 directly -- adding the same outer flip there doesn't fix
+          // orientation, it relocates the entire label to the opposite side
+          // of the wheel, since translate(radius, 0) then lands at world
+          // angle (textAngle + PI) instead of textAngle. Curved mode gets its
+          // own, narrower per-letter correction instead (see drawSliceLabel).
+          ctx.rotate((isFlipped && !useCurvedText) ? textAngle + Math.PI : textAngle);
 
-        // Auto-contrast: fall back to dark text if a future palette color
-        // ever turns out light, instead of hardcoding white.
-        ctx.fillStyle = relativeLuminance(baseColor) > 0.6 ? "#111111" : "#FFFFFF";
+          // Anchor text to its outward (rim-facing) edge, exactly
+          // LABEL_EDGE_MARGIN in from the slice's outer boundary, rather than
+          // floating at the slice's midpoint.
+          const textRadius = outsideRadius - LABEL_EDGE_MARGIN;
+          let fontSize = Math.floor(outsideRadius / (roster.length * 0.35));
+          fontSize = Math.min(Math.max(fontSize, 12), 20);
+          ctx.font = `bold ${fontSize}px Georgia, serif`;
 
-        let label = roster[i];
-        if (!useCurvedText && label.length > 12) label = label.substring(0, 10) + '..';
+          // Auto-contrast: fall back to dark text if a future palette color
+          // ever turns out light, instead of hardcoding white.
+          ctx.fillStyle = relativeLuminance(baseColor) > 0.6 ? "#111111" : "#FFFFFF";
 
-        drawSliceLabel(label, textRadius, useCurvedText, isFlipped);
+          let label = roster[i];
+          if (!useCurvedText) {
+            if (label.length > 12) label = label.substring(0, 10) + '..';
+          } else {
+            // Curved text has no fixed character cap like straight text does,
+            // so a long name can angularly overflow into neighboring slices
+            // once slices get narrow. Shrink it to fit within ~88% of this
+            // slice's own arc instead.
+            const maxLabelAngle = arc * 0.88;
+            while (label.length > 3) {
+              const testWidth = [...label].reduce((sum, ch) => sum + ctx.measureText(ch).width, 0);
+              if (testWidth / textRadius <= maxLabelAngle) break;
+              label = label.substring(0, label.length - 3) + '..';
+            }
+          }
 
-        ctx.restore();
+          drawSliceLabel(label, textRadius, useCurvedText, isFlipped);
+
+          ctx.restore();
+        }
       }
 
       drawRimLights(outsideRadius);
@@ -954,6 +988,7 @@
       if (spinTime >= spinTimeTotal) {
         clearTimeout(spinTimeout);
         isSpinning = false;
+        currentAngularVelocity = 0;
         determineWinner();
         return;
       }
@@ -961,6 +996,7 @@
       const spinProgress = spinTime / spinTimeTotal;
       const easeOut = 1 - Math.pow(1 - spinProgress, 3);
       const angleChange = spinAngleStart * (1 - easeOut);
+      currentAngularVelocity = angleChange; // degrees covered this frame -- drives the text-blur cutoff in drawWheel
       
       startAngle += (angleChange * Math.PI / 180);
 
@@ -1260,3 +1296,5 @@
   </script>
 </body>
 </html>
+
+  
