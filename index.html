@@ -239,6 +239,12 @@
           <button onclick="initRoom(true)" class="w-full bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs font-semibold py-2 rounded-lg transition flex items-center justify-center gap-2">
             <i class="fa-solid fa-rotate-right"></i> Regenerate Room PIN
           </button>
+
+          <div class="flex items-center gap-2 pt-1">
+            <label for="maxPerDeviceInput" class="text-xs text-slate-400 flex-1">Max names per device</label>
+            <input type="number" id="maxPerDeviceInput" min="1" max="50" placeholder="No limit" class="w-16 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-xs text-slate-200 text-center focus:outline-none focus:border-indigo-500" onchange="updateMaxPerDevice(this.value)">
+          </div>
+          <p class="text-[10px] text-slate-500">Leave blank for unlimited. Enforced in the audience's browser (submit.html), so it's a soft limit -- discourages casual multi-submission, not foolproof against someone clearing their browser data.</p>
         </div>
 
         <div class="bg-slate-900/60 p-3 rounded-xl border border-slate-700/60 space-y-2">
@@ -299,14 +305,14 @@
   <script>
     // Configuration Object containing Backend Execution Endpoint
     const CONFIG = {
-      ENDPOINT: "https://script.google.com/macros/s/AKfycbwHinZJKlrzpFN8Lbc9d46gNbIYH_H9-BsY2CDBWRD51i4fpDfdTBaz4wNrm5iFmJhUnQ/exec"
+ENDPOINT: "https://script.google.com/macros/s/AKfycbwHinZJKlrzpFN8Lbc9d46gNbIYH_H9-BsY2CDBWRD51i4fpDfdTBaz4wNrm5iFmJhUnQ/exec"
     };
 
     // Fill these in from the Firebase console (Project settings > General >
     // Your apps, and Realtime Database > the URL shown at the top of that page).
     const FIREBASE_CONFIG = {
-        apiKey: "AIzaSyAraGE0A3t9Hj7LYdHYTvmKpwKA8Mv6XMc",
-        databaseURL: "https://carrot-spinner-default-rtdb.asia-southeast1.firebasedatabase.app"
+      apiKey: "AIzaSyAraGE0A3t9Hj7LYdHYTvmKpwKA8Mv6XMc",
+      databaseURL: "https://carrot-spinner-default-rtdb.asia-southeast1.firebasedatabase.app"
     };
     firebase.initializeApp(FIREBASE_CONFIG);
     const firebaseDb = firebase.database();
@@ -370,54 +376,29 @@
 
     /**
      * Draws a slice label at the given radius, in the current (already
-     * rotated-to-bisector) canvas context. Straight mode anchors the text's
-     * outward edge at `radius` (or `-radius` when flipped, since the caller
-     * has already rotated the frame 180deg for left-half slices). Curved
-     * mode lays every letter along the arc at that same radius; the outer
-     * frame is NOT extra-rotated for curved text (see the caller), so each
-     * letter corrects its own orientation via `flipped` instead -- keeping
-     * the label centered on the correct world angle either way, since
-     * translate(radius, 0) preserves distance from center under pure
-     * rotation regardless of which direction "outward" currently faces.
-     * Returns the label's total rendered width.
+     * rotated-to-bisector) canvas context. Anchors the text's outward edge
+     * at `radius` (or `-radius` when flipped, since the caller has already
+     * rotated the frame 180deg for left-half slices) so it reads upright
+     * regardless of which side of the wheel it lands on. Returns the
+     * label's rendered width.
+     *
+     * (An earlier version also supported per-letter arc-following "curved"
+     * text for crowded wheels. It went through three rounds of real bugs --
+     * mispositioned labels, the wrong flip axis, and text visibly wrapping
+     * inside its own slice -- without a way to visually verify the fix here.
+     * Removed in favor of this simpler, consistently-correct approach with
+     * more aggressive font/truncation scaling for large rosters instead.)
      */
-    function drawSliceLabel(text, radius, curved, flipped) {
-      if (!curved) {
-        ctx.textBaseline = "middle";
-        if (flipped) {
-          ctx.textAlign = "left";
-          ctx.fillText(text, -radius, 0);
-        } else {
-          ctx.textAlign = "right";
-          ctx.fillText(text, radius, 0);
-        }
-        return ctx.measureText(text).width;
-      }
-
-      ctx.textAlign = "center";
+    function drawSliceLabel(text, radius, flipped) {
       ctx.textBaseline = "middle";
-      const letters = flipped ? [...text].reverse() : [...text];
-      const widths = letters.map(ch => ctx.measureText(ch).width);
-      const totalWidth = widths.reduce((a, b) => a + b, 0);
-      const totalAngle = totalWidth / radius; // arc length = radius * angle
-
-      let angle = -totalAngle / 2;
-      for (let i = 0; i < letters.length; i++) {
-        const halfCharAngle = (widths[i] / 2) / radius;
-        ctx.save();
-        ctx.rotate(angle + halfCharAngle);
-        ctx.translate(radius, 0);
-        // Same sign as the straight-text fix, but applied per-letter instead
-        // of to the whole frame -- this keeps the curve centered on the
-        // correct world angle (unlike flipping the outer rotation, which
-        // would relocate the whole label to the opposite side of the wheel)
-        // while still correcting each glyph to read upright.
-        ctx.rotate(flipped ? -Math.PI / 2 : Math.PI / 2);
-        ctx.fillText(letters[i], 0, 0);
-        ctx.restore();
-        angle += widths[i] / radius;
+      if (flipped) {
+        ctx.textAlign = "left";
+        ctx.fillText(text, -radius, 0);
+      } else {
+        ctx.textAlign = "right";
+        ctx.fillText(text, radius, 0);
       }
-      return totalWidth;
+      return ctx.measureText(text).width;
     }
 
     /**
@@ -668,6 +649,28 @@
       firebaseDb.ref(`rooms/${pin}/locked`).once('value')
         .then(snap => { roomLocked = !!snap.val(); updateRoomLockButton(); })
         .catch(() => { roomLocked = false; updateRoomLockButton(); });
+
+      // Reflect whatever per-device entry cap is already set for this room
+      // (matters after a page reload that reused a saved PIN).
+      firebaseDb.ref(`rooms/${pin}/maxPerDevice`).once('value')
+        .then(snap => {
+          const input = document.getElementById('maxPerDeviceInput');
+          if (input) input.value = snap.val() || '';
+        })
+        .catch(() => {});
+    }
+
+    /**
+     * Sets (or clears) the per-device submission cap for the current room.
+     * Enforced client-side in submit.html via a localStorage counter -- this
+     * just publishes the configured limit for that page to read.
+     */
+    function updateMaxPerDevice(value) {
+      if (!firebaseDb || !currentRoomPin) return;
+      const parsed = parseInt(value, 10);
+      const finalValue = (!value || isNaN(parsed) || parsed < 1) ? null : parsed;
+      firebaseDb.ref(`rooms/${currentRoomPin}/maxPerDevice`).set(finalValue)
+        .catch(err => console.warn('maxPerDevice update failed:', err));
     }
 
     /** Flips the room's registration-open/closed state via setRoomLock. */
@@ -843,10 +846,6 @@
       // applied), so convert mm using the standard 96px/inch assumption.
       const MM_TO_PX = 96 / 25.4;
       const LABEL_EDGE_MARGIN = 3 * MM_TO_PX; // ~11.3px gap from the rim
-      // Past this many slices, straight radial text starts getting cramped
-      // even after truncation -- switch to letters that follow the arc
-      // instead, all sitting at the same 3mm-from-rim radius.
-      const useCurvedText = roster.length > 14;
 
       ctx.save();
       ctx.translate(canvas.width / 2, canvas.height / 2);
@@ -913,60 +912,38 @@
           const textAngle = angle + arc / 2;
           const normalizedAngle = ((textAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 
-          // Straight (radial) text reads ALONG the radius, so its flip
-          // boundary is left-vs-right: a slice pointing into the left half
-          // needs its reading direction reversed to avoid upside-down text.
+          // Text reads ALONG the radius, so its flip boundary is
+          // left-vs-right: a slice pointing into the left half needs its
+          // reading direction reversed to avoid upside-down text.
           const isFlipped = normalizedAngle > Math.PI / 2 && normalizedAngle < Math.PI * 1.5;
 
-          // Curved text has an EXTRA 90deg tangential rotation baked in (to
-          // make letters hug the arc instead of point straight out), which
-          // shifts its danger zone to top-vs-bottom instead of left-vs-right.
-          // Reusing `isFlipped` here was the actual bug: it correctly left
-          // top-half curved labels flipped when they didn't need it (making
-          // them upside-down) and left bottom-half labels unflipped when they
-          // did (also upside-down) -- wrong axis entirely, not just a sign
-          // error. This is a separate, deliberately different test.
-          const curvedFlipped = normalizedAngle > 0 && normalizedAngle < Math.PI;
-
-          // The extra 180deg only belongs on straight text's OUTER rotation
-          // (it relies on the whole frame being flipped, then mirrors the
-          // anchor to compensate). Curved text centers itself on local angle
-          // 0 directly -- adding the same outer flip there doesn't fix
-          // orientation, it relocates the entire label to the opposite side
-          // of the wheel, since translate(radius, 0) then lands at world
-          // angle (textAngle + PI) instead of textAngle. Curved mode gets its
-          // own, narrower per-letter correction instead (see drawSliceLabel).
-          ctx.rotate((isFlipped && !useCurvedText) ? textAngle + Math.PI : textAngle);
+          // The whole frame flips 180deg for left-half slices; the anchor
+          // mirrors to compensate (see drawSliceLabel) so text still reads
+          // upright and sits at the same distance from the rim either way.
+          ctx.rotate(isFlipped ? textAngle + Math.PI : textAngle);
 
           // Anchor text to its outward (rim-facing) edge, exactly
           // LABEL_EDGE_MARGIN in from the slice's outer boundary, rather than
           // floating at the slice's midpoint.
           const textRadius = outsideRadius - LABEL_EDGE_MARGIN;
+
+          // Scale font down further, and truncate shorter, as the roster
+          // grows -- keeps large rosters legible without needing a separate
+          // (and bug-prone) curved-text rendering mode.
           let fontSize = Math.floor(outsideRadius / (roster.length * 0.35));
-          fontSize = Math.min(Math.max(fontSize, 12), 20);
+          fontSize = Math.min(Math.max(fontSize, 9), 20);
           ctx.font = `bold ${fontSize}px Georgia, serif`;
+
+          const maxChars = roster.length > 30 ? 7 : roster.length > 20 ? 9 : 12;
 
           // Auto-contrast: fall back to dark text if a future palette color
           // ever turns out light, instead of hardcoding white.
           ctx.fillStyle = relativeLuminance(baseColor) > 0.6 ? "#111111" : "#FFFFFF";
 
           let label = roster[i];
-          if (!useCurvedText) {
-            if (label.length > 12) label = label.substring(0, 10) + '..';
-          } else {
-            // Curved text has no fixed character cap like straight text does,
-            // so a long name can angularly overflow into neighboring slices
-            // once slices get narrow. Shrink it to fit within ~88% of this
-            // slice's own arc instead.
-            const maxLabelAngle = arc * 0.88;
-            while (label.length > 3) {
-              const testWidth = [...label].reduce((sum, ch) => sum + ctx.measureText(ch).width, 0);
-              if (testWidth / textRadius <= maxLabelAngle) break;
-              label = label.substring(0, label.length - 3) + '..';
-            }
-          }
+          if (label.length > maxChars) label = label.substring(0, maxChars - 2) + '..';
 
-          drawSliceLabel(label, textRadius, useCurvedText, useCurvedText ? curvedFlipped : isFlipped);
+          drawSliceLabel(label, textRadius, isFlipped);
 
           ctx.restore();
         }
