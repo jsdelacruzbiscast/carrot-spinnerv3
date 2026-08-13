@@ -911,14 +911,22 @@
         if (showText) {
           ctx.save();
           const textAngle = angle + arc / 2;
-
-          // Text on the left half of the wheel (roughly 90deg-270deg) would
-          // render completely upside-down if rotated the same way as the right
-          // half -- a plain rotation doesn't know "upright" from "inverted".
-          // Flip by an extra 180deg for that half so labels always read
-          // normally regardless of where they land on the wheel.
           const normalizedAngle = ((textAngle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+
+          // Straight (radial) text reads ALONG the radius, so its flip
+          // boundary is left-vs-right: a slice pointing into the left half
+          // needs its reading direction reversed to avoid upside-down text.
           const isFlipped = normalizedAngle > Math.PI / 2 && normalizedAngle < Math.PI * 1.5;
+
+          // Curved text has an EXTRA 90deg tangential rotation baked in (to
+          // make letters hug the arc instead of point straight out), which
+          // shifts its danger zone to top-vs-bottom instead of left-vs-right.
+          // Reusing `isFlipped` here was the actual bug: it correctly left
+          // top-half curved labels flipped when they didn't need it (making
+          // them upside-down) and left bottom-half labels unflipped when they
+          // did (also upside-down) -- wrong axis entirely, not just a sign
+          // error. This is a separate, deliberately different test.
+          const curvedFlipped = normalizedAngle > 0 && normalizedAngle < Math.PI;
 
           // The extra 180deg only belongs on straight text's OUTER rotation
           // (it relies on the whole frame being flipped, then mirrors the
@@ -958,7 +966,7 @@
             }
           }
 
-          drawSliceLabel(label, textRadius, useCurvedText, isFlipped);
+          drawSliceLabel(label, textRadius, useCurvedText, useCurvedText ? curvedFlipped : isFlipped);
 
           ctx.restore();
         }
@@ -1296,5 +1304,3 @@
   </script>
 </body>
 </html>
-
-  
